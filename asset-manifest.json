@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/qrousel/static/css/main.5a56f427.css",
+    "main.js": "/qrousel/static/js/main.ca4c4b1c.js",
+    "static/js/453.c4e8df38.chunk.js": "/qrousel/static/js/453.c4e8df38.chunk.js",
+    "index.html": "/qrousel/index.html",
+    "main.5a56f427.css.map": "/qrousel/static/css/main.5a56f427.css.map",
+    "main.ca4c4b1c.js.map": "/qrousel/static/js/main.ca4c4b1c.js.map",
+    "453.c4e8df38.chunk.js.map": "/qrousel/static/js/453.c4e8df38.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.5a56f427.css",
+    "static/js/main.ca4c4b1c.js"
+  ]
+}
