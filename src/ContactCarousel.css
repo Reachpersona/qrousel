@@ -1,0 +1,57 @@
+/* src/ContactCarousel.css */
+.ContactCarousel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.carousel-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.carousel-content{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.qr-code {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+}
+
+.description {
+  width: 80%;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.controls {
+  margin-top: 20px;
+}
+
+.controls button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin: 0 10px;
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  .qr-code {
+    max-height: 50vh;
+    width: auto;
+  }
+
+  .description {
+    width: 90%;
+  }
+}
