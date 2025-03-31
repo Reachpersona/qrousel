@@ -42,7 +42,12 @@ function ContactCarousel() {
   useEffect(() => {
     const savedContacts = localStorage.getItem('contactsData');
     if (savedContacts) {
-      setContacts(JSON.parse(savedContacts));
+      try {
+        setContacts(JSON.parse(savedContacts));
+      } catch (e) {
+        setError(new Error("Invalid data in localStorage"));
+        localStorage.removeItem('contactsData');
+      }
     }
   }, []);
 
@@ -72,9 +77,14 @@ function ContactCarousel() {
       contacts.forEach((contact) => {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = marked.parse(contact.description || '');
-        document.body.appendChild(tempDiv);
-        maxHeight = Math.max(maxHeight, tempDiv.offsetHeight);
-        document.body.removeChild(tempDiv);
+        if (typeof window !== 'undefined' && document) {
+          document.body.appendChild(tempDiv);
+          maxHeight = Math.max(maxHeight, tempDiv.offsetHeight);
+          document.body.removeChild(tempDiv);
+        }
+        else {
+          maxHeight = 200; // set a default height for node
+        }
       });
       setDescriptionHeight(maxHeight);
     }
@@ -105,13 +115,13 @@ function ContactCarousel() {
     };
 
     const carouselElement = carouselRef.current;
-    if (carouselElement) {
+    if (carouselElement && typeof window !== 'undefined') { // Only attach listeners in a browser
       carouselElement.addEventListener('touchstart', handleTouchStart);
       carouselElement.addEventListener('touchend', handleTouchEnd);
     }
 
     return () => {
-      if (carouselElement) {
+      if (carouselElement && typeof window !== 'undefined') {
         carouselElement.removeEventListener('touchstart', handleTouchStart);
         carouselElement.removeEventListener('touchend', handleTouchEnd);
       }
