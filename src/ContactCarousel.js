@@ -16,6 +16,7 @@ function ContactCarousel() {
   const loadContactsFromFile = async () => {
     try {
       if ('showOpenFilePicker' in window) {
+        console.log("File System Access API is available.");
         const [fileHandle] = await window.showOpenFilePicker({
           types: [
             {
@@ -31,7 +32,34 @@ function ContactCarousel() {
         localStorage.setItem('contactsData', JSON.stringify(parsedContacts)); // Save to localStorage
         setError(null);
       } else {
-        throw new Error('File System Access API is not supported in this browser.');
+        console.log("File System Access API is not available. Using fallback UI.");
+
+        // Provide alternative UI
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'fileInput';
+        fileInput.style.display = 'block';
+        fileInput.addEventListener('change', (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              console.log("File content:", e.target.result);
+              try {
+                const parsedContacts = yaml.load(e.target.result);
+                setContacts(parsedContacts || []);
+                localStorage.setItem('contactsData', JSON.stringify(parsedContacts)); // Save to localStorage
+                setError(null);
+              } catch (error) {
+                console.error('Error parsing file content:', error);
+                setError(error.message);
+              }
+            };
+            reader.readAsText(file);
+          }
+        });
+
+        document.body.appendChild(fileInput);
       }
     } catch (error) {
       console.error('Error loading qrdata.yaml:', error);
