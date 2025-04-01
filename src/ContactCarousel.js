@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, act } from 'react'; // Use act from react
 import QRCode from 'qrcode';
 import { marked } from 'marked';
 import yaml from 'js-yaml';
@@ -40,8 +40,8 @@ function ContactCarousel() {
         console.error("File System Access API is not available.");
       }
     } catch (error) {
-      console.error('Error loading contacts.yaml:', error);
-      setError(error.message);
+      console.error('Error loading qrdata.yaml:', error);
+      setError(error.message || "An unknown error occurred"); // Ensure error is a string
     }
   };
 
@@ -62,7 +62,7 @@ function ContactCarousel() {
             setError(null);
           } catch (error) {
             console.error('Error parsing file content:', error);
-            setError(error.message);
+            setError(error.message || "An unknown error occurred"); // Ensure error is a string
           }
         };
         reader.readAsText(file);
@@ -77,7 +77,7 @@ function ContactCarousel() {
       try {
         setContacts(JSON.parse(savedContacts));
       } catch (e) {
-        setError(new Error("Invalid data in localStorage"));
+        setError("Invalid data in localStorage"); // Ensure error is a string
         localStorage.removeItem('contactsData');
       }
     }
@@ -96,7 +96,10 @@ function ContactCarousel() {
             }
           })
         );
-        setQrCodes(codes);
+        // Wrap state update in act
+        await act(async () => {
+          setQrCodes(codes);
+        });
       }
     };
 
@@ -176,9 +179,9 @@ function ContactCarousel() {
       <div>
         <div>Error: {error}</div>
         {isFsApiAvailable ? (
-          <button onClick={loadContactsFromFile}>Select contacts.yaml</button>
+          <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
         ) : (
-          <button onClick={loadContactsFromInput}>Select contacts.yaml</button>
+          <button onClick={loadContactsFromInput}>Select qrdata.yaml</button>
         )}
       </div>
     );
@@ -187,11 +190,11 @@ function ContactCarousel() {
   if (contacts.length === 0) {
     return (
       <div>
-        <div>No contacts available. Please select a file.</div>
+        <div>No qrcode data available. Please select a file.</div>
         {isFsApiAvailable ? (
-          <button onClick={loadContactsFromFile}>Select contacts.yaml</button>
+          <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
         ) : (
-          <button onClick={loadContactsFromInput}>Select contacts.yaml</button>
+          <button onClick={loadContactsFromInput}>Select qrdata.yaml</button>
         )}
       </div>
     );
@@ -234,9 +237,9 @@ function ContactCarousel() {
       </div>
       <div className="load-new-file">
         {isFsApiAvailable ? (
-          <button onClick={loadContactsFromFile}>Load a different contacts.yaml</button>
+          <button onClick={loadContactsFromFile}>Load a different qrdata.yaml</button>
         ) : (
-          <button onClick={loadContactsFromInput}>Load a different contacts.yaml</button>
+          <button onClick={loadContactsFromInput}>Load a different qrdata.yaml</button>
         )}
       </div>
     </div>

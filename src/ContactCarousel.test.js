@@ -33,6 +33,7 @@ describe('ContactCarousel', () => {
     mockShowOpenFilePicker.mockReset();
     global.window = Object.create(window);
     global.window.showOpenFilePicker = mockShowOpenFilePicker;
+    localStorage.clear();
   });
 
   // Helper function to mock file selection
@@ -40,19 +41,114 @@ describe('ContactCarousel', () => {
     mockShowOpenFilePicker.mockResolvedValue([{ getFile: () => ({ text: () => Promise.resolve(yaml.dump(data)) }) }]);
   };
 
-/*
-  it('displays an error message when the file system access API is not supported', async () => {
-    delete global.window.showOpenFilePicker;
+  test('renders fallback button when File System Access API is unavailable', async () => {
+    // Mock the absence of the File System Access API
+    delete window.showOpenFilePicker;
 
-    render(<ContactCarousel />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Error: File System Access API is not supported in this browser.')).toBeInTheDocument();
+    await act(async () => {
+      render(<ContactCarousel />);
     });
+
+    expect(screen.getByText('No qrcode data available. Please select a file.')).toBeInTheDocument();
+    expect(screen.getByText('Select qrdata.yaml').closest('button')).toBeTruthy();
   });
 
-  it('displays an error message when file loading fails', async () => {
-    mockShowOpenFilePicker.mockRejectedValue(new Error('Failed to load file'));
+  test('renders File System Access API button when available', async () => {
+    // Mock the presence of the File System Access API
+    window.showOpenFilePicker = jest.fn();
+
+    await act(async () => {
+      render(<ContactCarousel />);
+    });
+
+    expect(screen.getByText('No qrcode data available. Please select a file.')).toBeInTheDocument();
+    expect(screen.getByText('Select qrdata.yaml').closest('button')).toBeTruthy();
+  });
+
+  test('loads contacts from localStorage if available', async () => {
+    const mockContacts = [{ url: 'https://example.com', description: 'Example' }];
+    localStorage.setItem('contactsData', JSON.stringify(mockContacts));
+
+    await act(async () => {
+      render(<ContactCarousel />);
+    });
+
+    // Check for the description from the mock data
+    expect(screen.getByText('Example')).toBeInTheDocument();
+  });
+
+  test('handles invalid localStorage data gracefully', async () => {
+    localStorage.setItem('contactsData', 'invalid-json');
+
+    await act(async () => {
+      render(<ContactCarousel />);
+    });
+
+    // Check for the actual rendered message
+    expect(screen.getByText('Error: Invalid data in localStorage')).toBeInTheDocument();
+  });
+
+  test('renders error message when an error occurs', async () => {
+    // Mock the File System Access API to throw an error
+    mockShowOpenFilePicker.mockImplementation(() => {
+      throw new Error('File picker error');
+    });
+
+    // Mock console.error
+    const consoleErrorMock = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      render(<ContactCarousel />);
+    });
+
+    // Simulate clicking the "Select qrdata.yaml" button
+    const selectFileButton = screen.getByText('Select qrdata.yaml');
+    await act(async () => {
+      fireEvent.click(selectFileButton);
+    });
+
+    // Check for the actual rendered error message
+    await waitFor(() => {
+      expect(screen.getByText('Error: File picker error')).toBeInTheDocument();
+    });
+
+    // Assert that console.error was called
+    expect(consoleErrorMock).toHaveBeenCalledWith(
+      'Error loading qrdata.yaml:',
+      expect.any(Error)
+    );
+
+    // Restore console.error
+    consoleErrorMock.mockRestore();
+  });
+
+  test('renders carousel controls and allows navigation', async () => {
+    const mockContacts = [
+      { url: 'https://example1.com', description: 'Example 1' },
+      { url: 'https://example2.com', description: 'Example 2' },
+    ];
+    localStorage.setItem('contactsData', JSON.stringify(mockContacts));
+
+    await act(async () => {
+      render(<ContactCarousel />);
+    });
+
+    expect(screen.getByRole('button', { name: 'Previous slide' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next slide' })).toBeInTheDocument();
+
+    // Navigate to the next slide and check for the updated description
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
+    });
+    expect(screen.getByText('Example 2')).toBeInTheDocument();
+  });
+
+  test('loads contacts from a selected file', async () => {
+    // Mock the file selection and file content
+    const mockContactsData = [
+      { url: 'https://example.com/test', description: 'Test Description' },
+    ];
+    mockFileSelection(mockContactsData);
 
     await act(async () => {
       render(<ContactCarousel />);
@@ -64,133 +160,146 @@ describe('ContactCarousel', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Error: Failed to load file')).toBeInTheDocument();
+      expect(screen.getByText('Test Description')).toBeInTheDocument();
     });
   });
-*/
 
-  it('loads contacts from a selected file', async () => {
-    // Mock the file selection and file content
+  test('renders the first contact on initial render', async () => {
+    // Mock the localStorage data to simulate existing contacts
     const mockContactsData = [
       { url: 'https://example.com/test', description: 'Test Description' },
     ];
-    mockFileSelection(mockContactsData);
+    localStorage.setItem('contactsData', JSON.stringify(mockContactsData));
+
     await act(async () => {
       render(<ContactCarousel />);
     });
-    const selectFileButton = screen.getByRole('button', { name: /Select qrdata.yaml/i });
-    await act(async () => {
-      fireEvent.click(selectFileButton);
-    });
+
+    // Wait for the first contact to be rendered
     await waitFor(() => {
       expect(screen.getByText('Test Description')).toBeInTheDocument();
     });
   });
 
-  it('renders the first contact on initial render', async () => {
-    // Mock the file selection and file content
-    const mockContactsData = [
-      { url: 'https://example.com/test', description: 'Test Description' },
-    ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
-  });
-
-  it('displays the next contact when the "Next" button is clicked', async () => {
-    // Mock the file selection and file content
+  test('displays the next contact when the "Next" button is clicked', async () => {
+    // Mock the localStorage data to simulate existing contacts
     const mockContactsData = [
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
     ];
-    mockFileSelection(mockContactsData);
+    localStorage.setItem('contactsData', JSON.stringify(mockContactsData));
+
     await act(async () => {
       render(<ContactCarousel />);
     });
 
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
+    // Ensure the first contact is displayed
+    expect(screen.getByText('Test Description 1')).toBeInTheDocument();
 
+    // Click the "Next slide" button and check for the second contact
+    const nextButton = screen.getByRole('button', { name: /Next slide/i });
     await act(async () => {
       fireEvent.click(nextButton);
     });
+
     await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
+      expect(screen.getByText('Test Description 2')).toBeInTheDocument();
     });
   });
 
-  it('displays the previous contact when the "Previous" button is clicked', async () => {
+  test('displays the previous contact when the "Previous" button is clicked', async () => {
+    // Mock the localStorage data to simulate existing contacts
     const mockContactsData = [
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
     ];
-    mockFileSelection(mockContactsData);
+    localStorage.setItem('contactsData', JSON.stringify(mockContactsData));
+
     await act(async () => {
       render(<ContactCarousel />);
     });
 
-    const prevButton = screen.getByRole('button', { name: /Previous slide/i });
+    // Ensure the second contact is displayed after navigating forward
     const nextButton = screen.getByRole('button', { name: /Next slide/i });
-
     await act(async () => {
-      fireEvent.click(nextButton); // Go to the second contact first
+      fireEvent.click(nextButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Description 2')).toBeInTheDocument();
+    });
+
+    // Click the "Previous slide" button and check for the first contact
+    const prevButton = screen.getByRole('button', { name: /Previous slide/i });
+    await act(async () => {
       fireEvent.click(prevButton);
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
+      expect(screen.getByText('Test Description 1')).toBeInTheDocument();
     });
   });
 
-  it('wraps around to the first contact from the last', async () => {
-    const longMockContactsData = [
+  test('wraps around to the first contact from the last', async () => {
+    // Mock the localStorage data to simulate multiple contacts
+    const mockContactsData = [
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
       { url: 'https://example.com/test3', description: 'Test Description 3' },
     ];
-    mockFileSelection(longMockContactsData);
+    localStorage.setItem('contactsData', JSON.stringify(mockContactsData));
+
     await act(async () => {
       render(<ContactCarousel />);
     });
 
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
     // Navigate to the last contact
-    await act(async () => {
-      for (let i = 0; i < longMockContactsData.length - 1; i++) {
-	fireEvent.click(nextButton);
-      }
+    const nextButton = screen.getByRole('button', { name: /Next slide/i });
+    for (let i = 0; i < mockContactsData.length - 1; i++) {
+      await act(async () => {
+        fireEvent.click(nextButton);
+      });
+    }
+
+    // Ensure the last contact is displayed
+    await waitFor(() => {
+      expect(screen.getByText('Test Description 3')).toBeInTheDocument();
     });
 
-    // Click next to wrap around
+    // Click next to wrap around to the first contact
     await act(async () => {
       fireEvent.click(nextButton);
     });
+
     await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
+      expect(screen.getByText('Test Description 1')).toBeInTheDocument();
     });
   });
 
-  it('wraps around to the last contact from the first', async () => {
-    const longMockContactsData = [
+  test('wraps around to the last contact from the first', async () => {
+    // Mock the localStorage data to simulate multiple contacts
+    const mockContactsData = [
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
       { url: 'https://example.com/test3', description: 'Test Description 3' },
     ];
-    mockFileSelection(longMockContactsData);
+    localStorage.setItem('contactsData', JSON.stringify(mockContactsData));
+
     await act(async () => {
       render(<ContactCarousel />);
     });
 
+    // Ensure the first contact is displayed
+    expect(screen.getByText('Test Description 1')).toBeInTheDocument();
+
+    // Click the "Previous slide" button to wrap around to the last contact
     const prevButton = screen.getByRole('button', { name: /Previous slide/i });
     await act(async () => {
       fireEvent.click(prevButton);
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
+      expect(screen.getByText('Test Description 3')).toBeInTheDocument();
     });
   });
 });
