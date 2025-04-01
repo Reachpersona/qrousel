@@ -11,12 +11,17 @@ function ContactCarousel() {
   const [descriptionHtml, setDescriptionHtml] = useState(null);
   const [descriptionHeight, setDescriptionHeight] = useState(0);
   const [error, setError] = useState(null);
+  const [isFsApiAvailable, setIsFsApiAvailable] = useState(false); // New state
   const carouselRef = useRef(null);
+
+  useEffect(() => {
+    // Check if File System Access API is available
+    setIsFsApiAvailable('showOpenFilePicker' in window);
+  }, []);
 
   const loadContactsFromFile = async () => {
     try {
-      if ('showOpenFilePicker' in window) {
-        console.log("File System Access API is available.");
+      if (isFsApiAvailable) {
         const [fileHandle] = await window.showOpenFilePicker({
           types: [
             {
@@ -32,39 +37,38 @@ function ContactCarousel() {
         localStorage.setItem('contactsData', JSON.stringify(parsedContacts)); // Save to localStorage
         setError(null);
       } else {
-        console.log("File System Access API is not available. Using fallback UI.");
-
-        // Provide alternative UI
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.id = 'fileInput';
-        fileInput.style.display = 'block';
-        fileInput.addEventListener('change', (event) => {
-          const file = event.target.files[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              console.log("File content:", e.target.result);
-              try {
-                const parsedContacts = yaml.load(e.target.result);
-                setContacts(parsedContacts || []);
-                localStorage.setItem('contactsData', JSON.stringify(parsedContacts)); // Save to localStorage
-                setError(null);
-              } catch (error) {
-                console.error('Error parsing file content:', error);
-                setError(error.message);
-              }
-            };
-            reader.readAsText(file);
-          }
-        });
-
-        document.body.appendChild(fileInput);
+        console.error("File System Access API is not available.");
       }
     } catch (error) {
-      console.error('Error loading qrdata.yaml:', error);
+      console.error('Error loading contacts.yaml:', error);
       setError(error.message);
     }
+  };
+
+  const loadContactsFromInput = () => {
+    // Trigger file input for fallback
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.yaml,.yml';
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsedContacts = yaml.load(e.target.result);
+            setContacts(parsedContacts || []);
+            localStorage.setItem('contactsData', JSON.stringify(parsedContacts)); // Save to localStorage
+            setError(null);
+          } catch (error) {
+            console.error('Error parsing file content:', error);
+            setError(error.message);
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
+    fileInput.click();
   };
 
   useEffect(() => {
@@ -171,7 +175,11 @@ function ContactCarousel() {
     return (
       <div>
         <div>Error: {error}</div>
-        <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
+        {isFsApiAvailable ? (
+          <button onClick={loadContactsFromFile}>Select contacts.yaml</button>
+        ) : (
+          <button onClick={loadContactsFromInput}>Select contacts.yaml</button>
+        )}
       </div>
     );
   }
@@ -180,7 +188,11 @@ function ContactCarousel() {
     return (
       <div>
         <div>No contacts available. Please select a file.</div>
-        <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
+        {isFsApiAvailable ? (
+          <button onClick={loadContactsFromFile}>Select contacts.yaml</button>
+        ) : (
+          <button onClick={loadContactsFromInput}>Select contacts.yaml</button>
+        )}
       </div>
     );
   }
@@ -221,7 +233,11 @@ function ContactCarousel() {
         </button>
       </div>
       <div className="load-new-file">
-        <button onClick={loadContactsFromFile}>Load a different qrdata.yaml</button>
+        {isFsApiAvailable ? (
+          <button onClick={loadContactsFromFile}>Load a different contacts.yaml</button>
+        ) : (
+          <button onClick={loadContactsFromInput}>Load a different contacts.yaml</button>
+        )}
       </div>
     </div>
   );
