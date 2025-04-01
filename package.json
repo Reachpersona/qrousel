@@ -21,14 +21,13 @@
   },
   "scripts": {
     "yaml-to-json": "node yaml-to-json.js",
-    "start": "npm run yaml-to-json && react-scripts start",
+    "start": "react-scripts start",
     "build": "react-scripts build",
-    "build-test": "REACT_APP_GH_PAGES=$1 node yaml-to-json.js ./data/qrdata-test.yaml",
-    "test": "npm run build-test && react-scripts test",
+    "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build-gh-pages https://reachpersona.github.io/qrousel/",
     "deploy": "gh-pages -d build ",
-    "build-gh-pages": "REACT_APP_GH_PAGES=$1 node yaml-to-json.js && react-scripts build"
+    "build-gh-pages": "react-scripts build"
   },
   "eslintConfig": {
     "extends": [
