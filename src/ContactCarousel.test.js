@@ -135,6 +135,21 @@ describe('ContactCarousel', () => {
     expect(localStorage.getItem('contactsData')).toBeNull();
   });
 
+  it('recovers instead of crashing when saved contacts are corrupt', async () => {
+    localStorage.setItem('contactsData', '{not json');
+
+    await act(async () => {
+      render(<ContactCarousel />);
+    });
+
+    // The user must land on something actionable, not a blank screen.
+    expect(screen.getByText(/Saved contact data was invalid/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Select qrdata\.yaml/i })).toBeInTheDocument();
+    // The unreadable entry is cleared, so a reload cannot hit this again.
+    expect(localStorage.getItem('contactsData')).toBeNull();
+    expectNoCarousel();
+  });
+
   it('loads contacts from a selected file', async () => {
     // Mock the file selection and file content
     const mockContactsData = [

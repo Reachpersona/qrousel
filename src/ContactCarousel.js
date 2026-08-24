@@ -45,7 +45,7 @@ function ContactCarousel() {
       try {
         setContacts(JSON.parse(savedContacts));
       } catch (e) {
-        setError(new Error("Invalid data in localStorage"));
+        setError('Saved contact data was invalid and has been cleared. Please select your qrdata.yaml file again.');
         localStorage.removeItem('contactsData');
       }
     }
