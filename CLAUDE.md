@@ -35,6 +35,10 @@ Effect chain in `ContactCarousel.js`, in order — changing one usually means ch
 
 `showSlide` wraps at both ends. Three render branches: error, empty, carousel — the first two each expose their own "Select qrdata.yaml" button.
 
+`src/QrContentsDialog.js` renders the reveal-the-QR-contents popup. It is a dumb component - it takes `{ url, onClose }` and owns nothing else; the carousel decides when it is open and closes it whenever `currentIndex` changes, so the dialog can never show a URL that disagrees with the QR code behind it. URLs come from a user-supplied YAML file and are untrusted: `isOpenable` allowlists `http:`/`https:`, and anything else renders as text with no Open button. `window.open` always gets `noopener,noreferrer`.
+
+Gesture split on the QR image: a mouse click opens the dialog, but on touch only a 500ms press does. A tap must not open it, because the carousel swipes on touch and a swipe still emits a trailing `click`. `isTouchInteractionRef` suppresses that trailing click for 600ms after a touch sequence, which is also why a mouse click on a hybrid device still works once the touch has settled.
+
 **Legacy build-time path.** `yaml-to-json.js` + `src/data/qrdata.js` predate the runtime loader (commit 75d8134 "contact data needed only at runtime"). `qrdata.js` is now imported only by `ContactCarousel.test.js`, and even there it is unused. Treat it as test fixture / dead weight, not as the app's data source. `.gitignore` still lists the pre-rename `src/data/contacts.js`, so the generated `qrdata.js` is committed.
 
 ## Tests
@@ -48,7 +52,12 @@ Two traps this suite has already fallen into once — check both when adding tes
 - **localStorage leaks between tests.** The component persists loaded contacts to `localStorage.contactsData` and rehydrates from it on mount, and jsdom keeps that store for the whole file. `beforeEach` clears it; without that, a test that declares a fixture but never clicks "Select qrdata.yaml" silently renders the *previous* test's data and asserts against it.
 - **Batched clicks read a stale index.** `showSlide` closes over `currentIndex`, so several `fireEvent.click` calls inside one `act()` all compute from the same pre-click index. Use one `await act()` per click (the `clickNext`/`clickPrevious` helpers) whenever a test walks through more than one slide.
 
+- **jsdom has no `PointerEvent`.** `fireEvent.pointerDown(el, { pointerType: 'touch', clientX: 10 })` silently drops every property - the handler receives an empty event. This is why the long-press uses touch events rather than pointer events. Do not reach for pointer events in this suite without polyfilling first.
+- **Touch fixtures need `changedTouches` and screen coordinates.** The swipe handler reads `e.changedTouches[0].screenX`, so a fixture supplying only `touches` throws inside a handler you were not even testing. The `touchEvent(x, y)` helper populates `touches`, `changedTouches`, `clientX/Y`, and `screenX/Y` together.
+
 Navigation tests use `renderWithContacts` (renders *and* loads the fixture through the picker) and `expectSlide(data, index)`, which asserts the expected description is present and every other slide's description is absent. The negative half is what makes these tests fail when navigation breaks. Verified by mutation: a no-op `showSlide` fails 4 tests, and clamping either wrap direction fails exactly the matching wrap test.
+
+`CI=true npx react-scripts build` fails on three pre-existing lint warnings (a missing `showSlide` dependency in the swipe effect, and two redundant `role="button"` attributes). Plain `npm run build` compiles with those as warnings. This is unrelated to any recent change - do not treat a red `CI=true` build as a regression without checking these three first.
 
 ## Deployment
 

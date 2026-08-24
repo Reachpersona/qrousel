@@ -238,4 +238,127 @@ describe('ContactCarousel', () => {
 
     expectSlide(longMockContactsData, longMockContactsData.length - 1);
   });
+  describe('QR contents popup', () => {
+    const TWO = [
+      { url: 'https://example.com/one', description: 'Test Description 1' },
+      { url: 'https://example.com/two', description: 'Test Description 2' },
+    ];
+
+    // Real browsers populate touches, changedTouches, and screen coordinates on
+    // every touch event; the carousel's swipe handler reads changedTouches.
+    const touch = (x, y) => [{ clientX: x, clientY: y, screenX: x, screenY: y }];
+    const touchEvent = (x, y) => ({ touches: touch(x, y), changedTouches: touch(x, y) });
+
+    const longPress = async (element) => {
+      fireEvent.touchStart(element, touchEvent(10, 10));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+      fireEvent.touchEnd(element, touchEvent(10, 10));
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers({ advanceTimers: true });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('does not show the popup until the user asks for it', async () => {
+      await renderWithContacts(TWO);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('shows the current slide url when the qr code is clicked', async () => {
+      await renderWithContacts(TWO);
+
+      fireEvent.click(screen.getByAltText('QR Code'));
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('https://example.com/one')).toBeInTheDocument();
+    });
+
+    it('shows the url of the slide the user navigated to', async () => {
+      await renderWithContacts(TWO);
+      await clickNext();
+
+      fireEvent.click(screen.getByAltText('QR Code'));
+
+      expect(screen.getByText('https://example.com/two')).toBeInTheDocument();
+    });
+
+    it('opens the popup on a long press', async () => {
+      await renderWithContacts(TWO);
+
+      await longPress(screen.getByAltText('QR Code'));
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('does not open the popup on a quick tap', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+      fireEvent.touchEnd(qr, touchEvent(10, 10));
+      fireEvent.click(qr);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not open the popup when the press turns into a swipe', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      fireEvent.touchMove(qr, touchEvent(90, 12));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not cancel the press for a small finger wobble', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      fireEvent.touchMove(qr, touchEvent(13, 12));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('opens on a mouse click once an earlier touch has settled', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      fireEvent.touchEnd(qr, touchEvent(10, 10));
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      fireEvent.click(qr);
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('closes the popup when the slide changes', async () => {
+      await renderWithContacts(TWO);
+      fireEvent.click(screen.getByAltText('QR Code'));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      await clickNext();
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
 });
