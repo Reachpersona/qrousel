@@ -78,15 +78,36 @@ describe('ContactCarousel', () => {
     });
   };
 
-/*
+  const clickSelectFile = () => clickControl(/Select qrdata\.yaml/i);
+
+  // The error branch replaces the carousel entirely, so nothing from the
+  // loaded-contacts UI may survive it.
+  const expectNoCarousel = () => {
+    expect(screen.queryByRole('button', { name: /Next slide/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Previous slide/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('description')).not.toBeInTheDocument();
+  };
+
   it('displays an error message when the file system access API is not supported', async () => {
     delete global.window.showOpenFilePicker;
 
-    render(<ContactCarousel />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Error: File System Access API is not supported in this browser.')).toBeInTheDocument();
+    await act(async () => {
+      render(<ContactCarousel />);
     });
+
+    // The API check lives inside loadContactsFromFile, so mounting alone must
+    // not surface an error - the user has not asked for a file yet.
+    expect(
+      screen.queryByText(/File System Access API is not supported/)
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('No contacts available. Please select a file.')).toBeInTheDocument();
+
+    await clickSelectFile();
+
+    expect(
+      screen.getByText('Error: File System Access API is not supported in this browser.')
+    ).toBeInTheDocument();
+    expectNoCarousel();
   });
 
   it('displays an error message when file loading fails', async () => {
@@ -96,16 +117,23 @@ describe('ContactCarousel', () => {
       render(<ContactCarousel />);
     });
 
-    const selectFileButton = screen.getByRole('button', { name: /Select qrdata.yaml/i });
+    await clickSelectFile();
+
+    expect(screen.getByText('Error: Failed to load file')).toBeInTheDocument();
+    expectNoCarousel();
+  });
+
+  it('does not persist contacts to localStorage when loading fails', async () => {
+    mockShowOpenFilePicker.mockRejectedValue(new Error('Failed to load file'));
+
     await act(async () => {
-      fireEvent.click(selectFileButton);
+      render(<ContactCarousel />);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Error: Failed to load file')).toBeInTheDocument();
-    });
+    await clickSelectFile();
+
+    expect(localStorage.getItem('contactsData')).toBeNull();
   });
-*/
 
   it('loads contacts from a selected file', async () => {
     // Mock the file selection and file content
