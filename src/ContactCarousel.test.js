@@ -31,6 +31,7 @@ describe('ContactCarousel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockShowOpenFilePicker.mockReset();
+    localStorage.clear();
     global.window = Object.create(window);
     global.window.showOpenFilePicker = mockShowOpenFilePicker;
   });
@@ -38,6 +39,43 @@ describe('ContactCarousel', () => {
   // Helper function to mock file selection
   const mockFileSelection = (data) => {
     mockShowOpenFilePicker.mockResolvedValue([{ getFile: () => ({ text: () => Promise.resolve(yaml.dump(data)) }) }]);
+  };
+
+  // Render and actually load the fixture through the file picker. Without the
+  // click the carousel stays on the empty state, and the navigation controls
+  // never render.
+  const renderWithContacts = async (data) => {
+    mockFileSelection(data);
+    await act(async () => {
+      render(<ContactCarousel />);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Select qrdata\.yaml/i }));
+    });
+    await screen.findByText(data[0].description);
+  };
+
+  // One act() per click: batching several clicks into a single act() makes every
+  // handler read the same stale currentIndex, so the component never passes
+  // through the intermediate slides.
+  const clickControl = async (name) => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name }));
+    });
+  };
+
+  const clickNext = () => clickControl(/Next slide/i);
+  const clickPrevious = () => clickControl(/Previous slide/i);
+
+  // Assert the expected slide is showing and, just as importantly, that none of
+  // the other slides are.
+  const expectSlide = (data, index) => {
+    expect(screen.getByText(data[index].description)).toBeInTheDocument();
+    data.forEach((contact, i) => {
+      if (i !== index) {
+        expect(screen.queryByText(contact.description)).not.toBeInTheDocument();
+      }
+    });
   };
 
 /*
@@ -88,38 +126,25 @@ describe('ContactCarousel', () => {
   });
 
   it('renders the first contact on initial render', async () => {
-    // Mock the file selection and file content
-    const mockContactsData = [
-      { url: 'https://example.com/test', description: 'Test Description' },
-    ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
-  });
-
-  it('displays the next contact when the "Next" button is clicked', async () => {
-    // Mock the file selection and file content
     const mockContactsData = [
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
     ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
+    await renderWithContacts(mockContactsData);
 
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
+    expectSlide(mockContactsData, 0);
+  });
 
-    await act(async () => {
-      fireEvent.click(nextButton);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
+  it('displays the next contact when the "Next" button is clicked', async () => {
+    const mockContactsData = [
+      { url: 'https://example.com/test1', description: 'Test Description 1' },
+      { url: 'https://example.com/test2', description: 'Test Description 2' },
+    ];
+    await renderWithContacts(mockContactsData);
+
+    await clickNext();
+
+    expectSlide(mockContactsData, 1);
   });
 
   it('displays the previous contact when the "Previous" button is clicked', async () => {
@@ -127,22 +152,14 @@ describe('ContactCarousel', () => {
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
     ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
+    await renderWithContacts(mockContactsData);
 
-    const prevButton = screen.getByRole('button', { name: /Previous slide/i });
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
+    await clickNext(); // Go to the second contact first
+    expectSlide(mockContactsData, 1);
 
-    await act(async () => {
-      fireEvent.click(nextButton); // Go to the second contact first
-      fireEvent.click(prevButton);
-    });
+    await clickPrevious();
 
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
+    expectSlide(mockContactsData, 0);
   });
 
   it('wraps around to the first contact from the last', async () => {
@@ -151,26 +168,18 @@ describe('ContactCarousel', () => {
       { url: 'https://example.com/test2', description: 'Test Description 2' },
       { url: 'https://example.com/test3', description: 'Test Description 3' },
     ];
-    mockFileSelection(longMockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
+    await renderWithContacts(longMockContactsData);
 
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
     // Navigate to the last contact
-    await act(async () => {
-      for (let i = 0; i < longMockContactsData.length - 1; i++) {
-	fireEvent.click(nextButton);
-      }
-    });
+    for (let i = 0; i < longMockContactsData.length - 1; i++) {
+      await clickNext();
+    }
+    expectSlide(longMockContactsData, longMockContactsData.length - 1);
 
     // Click next to wrap around
-    await act(async () => {
-      fireEvent.click(nextButton);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
+    await clickNext();
+
+    expectSlide(longMockContactsData, 0);
   });
 
   it('wraps around to the last contact from the first', async () => {
@@ -179,18 +188,11 @@ describe('ContactCarousel', () => {
       { url: 'https://example.com/test2', description: 'Test Description 2' },
       { url: 'https://example.com/test3', description: 'Test Description 3' },
     ];
-    mockFileSelection(longMockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
+    await renderWithContacts(longMockContactsData);
+    expectSlide(longMockContactsData, 0);
 
-    const prevButton = screen.getByRole('button', { name: /Previous slide/i });
-    await act(async () => {
-      fireEvent.click(prevButton);
-    });
+    await clickPrevious();
 
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
+    expectSlide(longMockContactsData, longMockContactsData.length - 1);
   });
 });
