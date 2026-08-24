@@ -41,7 +41,7 @@ rules, so those rules move out rather than being reimplemented or reached into.
 ```
 index.js
 └── App.js                  owns mode: 'view' | 'edit'
-    ├── useContactsFile()   contacts, file handle, load, save, persistence
+    ├── useContactsFile()   contacts, in-memory file handle, load, save, persistence
     ├── ContactCarousel     viewer; receives contacts, renders QR + dialog
     └── ContactEditor       list editor; receives contacts + onChange/onSave
 ```
@@ -56,11 +56,6 @@ Ownership is split deliberately: the hook holds what has been saved, `App` holds
 in-progress draft. There is no `setContacts` — nothing can push uncommitted edits into the
 committed state, which is what makes the persistence ordering below enforceable rather
 than merely intended.
-
-**`src/fileHandleStore.js`** — a small IndexedDB wrapper, `getHandle()` / `putHandle()` /
-`clearHandle()`. Needed because a `FileSystemFileHandle` is not JSON-serializable and
-therefore cannot live in localStorage next to the contacts. Without it, every page reload
-would silently downgrade Save to Save As.
 
 **`src/ContactEditor.js`** — presentational. Receives the working copy and callbacks;
 owns no file or storage logic. One row per entry with url and description fields, move
@@ -78,12 +73,26 @@ scalars for multiline descriptions, leaves single-line values plain, and round-t
 `load(dump(x)) === x`. `lineWidth: -1` prevents long URLs from being folded across lines.
 No custom serializer.
 
+## Handle lifetime
+
+The `FileSystemFileHandle` is held in memory for the session only. It is not persisted:
+a handle is not JSON-serializable, so it cannot live in localStorage beside the contacts,
+and persisting it in IndexedDB was considered and rejected as more surface than the
+feature is worth.
+
+The consequence is deliberate and must be visible rather than discovered at save time:
+**after a page reload the app no longer has a link to the original file, so Save is not
+offered and Save As is the only way to write.** The contacts themselves survive, because
+they are mirrored to localStorage as they are today - it is only the file link that is
+lost. The editor states this up front while it is true, naming Save As as the way
+forward, rather than presenting a Save button that fails when pressed.
+
 ## File handle and permissions
 
 Reading a file does not grant permission to write it. The existing picker takes read
 access only, so saving needs an explicit upgrade:
 
-1. On load, request the handle with `showOpenFilePicker` and store it via `putHandle()`.
+1. On load, keep the handle returned by `showOpenFilePicker` in the hook's state.
 2. On Save, call `handle.queryPermission({ mode: 'readwrite' })`.
    - `granted` — write.
    - `prompt` — call `requestPermission({ mode: 'readwrite' })`; the Save click is the
@@ -96,7 +105,8 @@ A denied or failed permission must leave the user's edits intact and still edita
 ## Save semantics
 
 - **Save** — writes to the remembered handle. Disabled, with a visible reason, when there
-  is no handle (a file built from scratch, or a handle whose permission was denied).
+  is no handle: a file built from scratch, a handle whose permission was denied, or any
+  session that began with a page reload.
 - **Save As** — `showSaveFilePicker` with a suggested name of `qrdata.yaml`; on success
   the returned handle replaces the remembered one, so subsequent Saves go to the new file.
 
@@ -131,8 +141,8 @@ console:
 |---|---|
 | Write permission denied | Editor stays open with edits intact; message explains Save As is still available |
 | Write fails mid-save | Same; localStorage untouched, so the last good state survives |
-| Handle in IndexedDB but file was moved or deleted | Save falls back to Save As with an explanation |
-| IndexedDB unavailable (private mode) | Authoring still works for the session; Save degrades to Save As, stated up front rather than at save time |
+| Page reloaded, so the handle is gone | Save is not offered; the editor says the file link was lost on reload and points at Save As |
+| Remembered file was moved or deleted | Save falls back to Save As with an explanation |
 | File System Access API absent | Editor is not offered; existing unsupported-browser message explains why |
 | Empty url on save | Save blocked, offending rows flagged inline; nothing is written |
 
@@ -149,6 +159,7 @@ Negative assertions, one per no-op branch, each asserting the absence of the wor
 - Cancelling `showSaveFilePicker` does **not** change the remembered handle.
 - Declining the discard confirmation does **not** leave edit mode.
 - Moving the first entry up, or the last entry down, does **not** reorder anything.
+- With no remembered handle, Save is **not** offered and no write is attempted.
 - Editing without saving does **not** change what the viewer renders.
 
 Each guard is then mutation-checked: removing the guard must fail exactly the test that
@@ -165,10 +176,8 @@ exercised.
 - The README's manual "edit YAML, run the script" workflow is superseded for authoring but
   remains valid; updating it is follow-up work, not part of this change.
 
-## Open question for review
+## Resolved at review
 
-IndexedDB handle persistence is the largest single piece of new surface here, and it
-exists only so that Save survives a page reload. The alternative is to hold the handle in
-memory for the session and, after a reload, show that Save will need Save As once. That
-removes a module and an async failure mode at the cost of re-picking the file after each
-refresh. Say so at review if you would rather start without it.
+IndexedDB handle persistence was specified and then dropped. The handle lives in memory
+for the session; after a reload the user re-picks the file through Save As. This removes a
+module and an async failure mode, at the cost of one extra dialog after each refresh.
