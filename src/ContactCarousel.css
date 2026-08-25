@@ -60,11 +60,11 @@
   width: 80%;
   text-align: center;
   margin-top: 16px;
-  /* A long description scrolls in place instead of pushing the controls and the
-     version footer off the bottom of the screen. */
-  flex: 0 1 auto;
+  /* Takes whatever height is left after the code and the controls, and scrolls
+     only once it genuinely has more text than that. Growing into the space is
+     also what keeps slides from jumping - no reserved height needed. */
+  flex: 1 1 auto;
   min-height: 0;
-  max-height: 25dvh;
   overflow-y: auto;
 }
 
@@ -113,18 +113,17 @@
 }
 
 .file-actions {
-  /* The bottom quarter of the screen, but able to give space back on a very
-     short viewport rather than forcing the footer out of view. */
-  height: 25dvh;
-  flex: 0 1 auto;
-  min-height: 0;
+  /* Sized to the buttons rather than to a fixed share of the screen: reserving a
+     quarter of a small viewport left a gap under the controls while the
+     description was scrolling for want of the same space. */
+  flex: 0 0 auto;
   width: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 0 12px;
+  padding: 12px;
   box-sizing: border-box;
 }
 
