@@ -219,7 +219,6 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
         </button>
       </div>
       <div className="load-new-file">
-        {fileName && <p className="file-name">{fileName}</p>}
         <button onClick={onEdit}>Edit</button>
         <button onClick={onLoadFile}>Load a different qrdata.yaml</button>
       </div>
@@ -228,6 +227,11 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           url={contacts[currentIndex]?.url}
           onClose={() => setIsQrDialogOpen(false)}
         />
+      )}
+      {fileName && (
+        <p className="file-name" data-testid="file-name">
+          {fileName}
+        </p>
       )}
     </div>
   );

@@ -123,3 +123,16 @@
   font-size: 13px;
   color: #8a5b00;
 }
+
+.file-name {
+  /* Sits at the bottom of the viewport: the carousel is a centred flex column,
+     so an auto top margin absorbs the remaining space and pushes this down
+     without taking it out of flow and overlapping the controls. */
+  margin: auto 0 0;
+  width: 100%;
+  text-align: center;
+  font-family: monospace;
+  font-size: 13px;
+  color: #666;
+  padding-bottom: 8px;
+}

@@ -14,9 +14,11 @@ if (typeof global.TextEncoder === 'undefined') {
 }
 
 describe('ContactCarousel', () => {
-  const renderWithContacts = async (data) => {
+  const renderWithContacts = async (data, props = {}) => {
     await act(async () => {
-      render(<ContactCarousel contacts={data} onLoadFile={() => {}} onEdit={() => {}} />);
+      render(
+        <ContactCarousel contacts={data} onLoadFile={() => {}} onEdit={() => {}} {...props} />
+      );
     });
     await screen.findByText(data[0].description);
   };
@@ -235,6 +237,30 @@ describe('ContactCarousel', () => {
       await clickNext();
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+  describe('file name', () => {
+    const ONE = [{ url: 'https://example.com/one', description: 'Test Description 1' }];
+
+    it('shows the name of the loaded file', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      expect(screen.getByTestId('file-name')).toHaveTextContent('qrdata.yaml');
+    });
+
+    it('shows nothing when no file name is known', async () => {
+      await renderWithContacts(ONE);
+
+      expect(screen.queryByTestId('file-name')).not.toBeInTheDocument();
+    });
+
+    it('keeps the file name out of the button group', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      // It belongs to the page, not to the Edit/Load controls - nesting it
+      // there is what left it hugging the left edge.
+      const buttonGroup = document.querySelector('.load-new-file');
+      expect(buttonGroup).not.toContainElement(screen.getByTestId('file-name'));
     });
   });
 });
