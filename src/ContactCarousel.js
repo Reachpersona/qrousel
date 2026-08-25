@@ -16,6 +16,19 @@ const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 // click on a hybrid device is not swallowed.
 const CLICK_AFTER_TOUCH_MS = 600;
 const QR_PIXEL_SIZE = 1024;
+const DESCRIPTION_VIEWPORT_FRACTION = 0.25;
+
+/**
+ * The description reserves space so slides do not jump as you page through
+ * them, but that reservation is a min-height, and a min-height cannot be reined
+ * in by max-height in CSS. Left uncapped, one long description pushes the
+ * controls and the footer off a phone screen.
+ */
+export function cappedDescriptionHeight(measured, viewportHeight) {
+  const height = Math.max(0, measured || 0);
+  if (!viewportHeight) return height;
+  return Math.min(height, viewportHeight * DESCRIPTION_VIEWPORT_FRACTION);
+}
 
 function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [qrCodes, setQrCodes] = useState([]);
@@ -68,7 +81,9 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           maxHeight = 200; // set a default height for node
         }
       });
-      setDescriptionHeight(maxHeight);
+      setDescriptionHeight(
+        cappedDescriptionHeight(maxHeight, typeof window === 'undefined' ? 0 : window.innerHeight)
+      );
     }
   }, [qrCodes, contacts]);
 

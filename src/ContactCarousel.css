@@ -4,31 +4,51 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* 100vh on a phone is the viewport as it would be with the browser UI hidden,
+     so the last band of the page sits underneath the address bar. dvh tracks
+     what is actually visible; vh stays as a fallback for older browsers. */
   height: 100vh;
+  height: 100dvh;
+  /* Every band below can shrink, so nothing should reach this - it is here so a
+     miscalculation cannot push a control off the screen unnoticed. */
+  overflow: hidden;
 }
 
+/* min-height: 0 at every level: a flex item defaults to min-height: auto, which
+   floors it at its content size and stops the shrinking below from reaching the
+   QR code. */
 .carousel-item {
   display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
 }
 
-.carousel-content{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
+.carousel-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .qr-code {
   /* Fill most of the width on a phone, but never grow taller than the space
      the carousel has: min() keeps the code square and stops a wide desktop
      window turning 80vw into something taller than the viewport. */
-  width: min(80vw, 60vh);
+  /* Wants 80% of the width, but yields to whatever height is actually left, so
+     a short screen shrinks the code rather than overflowing. */
+  width: min(80vw, 60dvh);
   height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  flex: 0 1 auto;
+  min-height: 0;
   aspect-ratio: 1 / 1;
   object-fit: contain;
   /* Scaling up must keep the module edges hard - smoothing softens exactly the
@@ -39,11 +59,18 @@
 .description {
   width: 80%;
   text-align: center;
-  margin-top: 20px;
+  margin-top: 16px;
+  /* A long description scrolls in place instead of pushing the controls and the
+     version footer off the bottom of the screen. */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 25dvh;
+  overflow-y: auto;
 }
 
 .controls {
-  margin-top: 20px;
+  margin-top: 16px;
+  flex-shrink: 0;
 }
 
 .controls button {
@@ -86,8 +113,11 @@
 }
 
 .file-actions {
-  height: 25vh;
-  flex-shrink: 0;
+  /* The bottom quarter of the screen, but able to give space back on a very
+     short viewport rather than forcing the footer out of view. */
+  height: 25dvh;
+  flex: 0 1 auto;
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-wrap: wrap;
