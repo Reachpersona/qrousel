@@ -269,6 +269,7 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
       {isQrDialogOpen && (
         <QrContentsDialog
           url={contacts[currentIndex]?.url}
+          imageDataUrl={qrCodes[currentIndex]}
           onClose={() => setIsQrDialogOpen(false)}
         />
       )}

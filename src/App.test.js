@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, act, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import yaml from 'js-yaml';
+import QRCode from 'qrcode';
 import App from './App';
 
 jest.mock('qrcode', () => ({
@@ -49,6 +50,9 @@ describe('App', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // See ContactCarousel.test.js: CRA's resetMocks strips the factory
+    // implementation before every test.
+    QRCode.toDataURL.mockResolvedValue('data:image/png;base64,mock-qr-code');
     localStorage.clear();
     writes = [];
     openPicker = jest.fn();

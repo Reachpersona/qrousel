@@ -15,6 +15,14 @@ if (typeof global.TextEncoder === 'undefined') {
 }
 
 describe('ContactCarousel', () => {
+  beforeEach(() => {
+    // Create React App sets resetMocks: true, which strips the implementation
+    // given in the jest.mock factory before every test. Without this the mock
+    // resolves undefined and every QR code silently falls back to the
+    // placeholder image.
+    QRCode.toDataURL.mockResolvedValue('data:image/png;base64,mock-qr-code');
+  });
+
   const renderWithContacts = async (data, props = {}) => {
     await act(async () => {
       render(
@@ -250,6 +258,17 @@ describe('ContactCarousel', () => {
 
       // Desktop right-click must still offer Save image as.
       expect(notPrevented).toBe(true);
+    });
+
+    it('hands the generated image to the popup so it can be saved', async () => {
+      await renderWithContacts(TWO);
+
+      fireEvent.click(screen.getByAltText('QR Code'));
+
+      // The QR data URLs arrive from their own effect, so wait for the link
+      // rather than assuming it is there the moment the dialog opens.
+      const link = await screen.findByRole('link', { name: /save image/i });
+      expect(link).toHaveAttribute('href', 'data:image/png;base64,mock-qr-code');
     });
 
     it('closes the popup when the slide changes', async () => {
