@@ -3,6 +3,10 @@
   font-size: 14px;
 }
 
+.help dd:last-of-type {
+  margin-bottom: 0;
+}
+
 .help dt {
   font-weight: 600;
   margin-top: 12px;
@@ -20,5 +24,5 @@
 .help-note {
   font-size: 13px;
   color: #666;
-  margin: 16px 0 0;
+  margin: 12px 0 0;
 }

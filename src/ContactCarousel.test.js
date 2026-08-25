@@ -277,12 +277,44 @@ describe('ContactCarousel', () => {
       expect(screen.getByRole('dialog', { name: /help/i })).toBeInTheDocument();
     });
 
-    it('warns in the help that saving drops comments', async () => {
+    const openHelp = async () => {
       await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
-
       fireEvent.click(screen.getByRole('button', { name: /^Help$/ }));
+    };
 
-      expect(screen.getByText('Saving drops comments')).toBeInTheDocument();
+    const helpTerms = () =>
+      Array.from(document.querySelectorAll('.help dt')).map((dt) => dt.textContent);
+
+    it('warns in the help that saving drops comments', async () => {
+      await openHelp();
+
+      expect(
+        screen.getByText(/comments, blank lines, and quoting style are lost/i)
+      ).toBeInTheDocument();
+    });
+
+    it('names Save As as the recommended way to write', async () => {
+      await openHelp();
+
+      expect(screen.getByText(/Recommended - writes a new file/i)).toBeInTheDocument();
+    });
+
+    it('states the browser requirement before the rest of the help', async () => {
+      await openHelp();
+
+      const note = screen.getByText(/Chrome or Edge/i);
+      const list = document.querySelector('.help');
+      // eslint-disable-next-line no-bitwise
+      expect(note.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('lists Switch before Edit, and Save As before Save', async () => {
+      await openHelp();
+
+      const terms = helpTerms();
+      expect(terms.indexOf('Switch')).toBeGreaterThan(-1);
+      expect(terms.indexOf('Switch')).toBeLessThan(terms.indexOf('Edit'));
+      expect(terms.indexOf('Save As')).toBeLessThan(terms.indexOf('Save'));
     });
 
     it('closes help on Escape', async () => {

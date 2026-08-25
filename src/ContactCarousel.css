@@ -124,6 +124,11 @@
   flex-shrink: 0;
   border-radius: 50%;
   font-size: 16px;
+  /* A button's default padding and baseline alignment leave the glyph sitting
+     off-centre in a circle; centring it as a flex item ignores both. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   padding: 0;
 }
