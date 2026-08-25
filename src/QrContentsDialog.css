@@ -11,3 +11,15 @@
   font-size: 13px;
   color: #8a5b00;
 }
+
+.qr-dialog-save {
+  /* Sits among the dialog's buttons, so it should read as one. */
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px solid #767676;
+  border-radius: 4px;
+  background: #efefef;
+  color: #000;
+  font-size: 14px;
+  text-decoration: none;
+}

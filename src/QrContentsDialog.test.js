@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
-import QrContentsDialog from './QrContentsDialog';
+import QrContentsDialog, { qrImageFileName } from './QrContentsDialog';
+
+const IMAGE = 'data:image/png;base64,iVBORw0KGgo=';
 
 const setClipboard = (value) => {
   Object.defineProperty(navigator, 'clipboard', { value, configurable: true });
@@ -118,5 +120,60 @@ describe('QrContentsDialog', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
 
     expect(onClose).not.toHaveBeenCalled();
+  });
+  it('offers the qr image for saving', async () => {
+    render(
+      <QrContentsDialog url="https://example.com/a" imageDataUrl={IMAGE} onClose={() => {}} />
+    );
+
+    const link = screen.getByRole('link', { name: /save image/i });
+    expect(link).toHaveAttribute('href', IMAGE);
+    expect(link).toHaveAttribute('download', 'qr-example.com.png');
+  });
+
+  it('offers nothing to save when there is no generated image', async () => {
+    render(<QrContentsDialog url="https://example.com/a" onClose={() => {}} />);
+
+    expect(screen.queryByRole('link', { name: /save image/i })).not.toBeInTheDocument();
+  });
+
+  it('offers nothing to save when the code fell back to the placeholder', async () => {
+    render(
+      <QrContentsDialog
+        url="https://example.com/a"
+        imageDataUrl="/placeholder.png"
+        onClose={() => {}}
+      />
+    );
+
+    // The placeholder is not a QR code; saving it would hand back a broken file.
+    expect(screen.queryByRole('link', { name: /save image/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('qrImageFileName', () => {
+  it('names the file after the host for a web address', () => {
+    expect(qrImageFileName('https://example.com/a/long/path?x=1')).toBe('qr-example.com.png');
+  });
+
+  it('builds a readable name from a non-web payload', () => {
+    // Dots survive, since they are what makes a host readable in the name.
+    expect(qrImageFileName('mailto:someone@example.com')).toBe(
+      'qr-mailto-someone-example.com.png'
+    );
+  });
+
+  it('does not run a long payload into an unusable file name', () => {
+    const name = qrImageFileName('x'.repeat(300));
+    expect(name.length).toBeLessThanOrEqual(64);
+    expect(name.endsWith('.png')).toBe(true);
+  });
+
+  it('falls back to a plain name for an empty payload', () => {
+    expect(qrImageFileName('')).toBe('qr.png');
+  });
+
+  it('does not leave separators stranded at the ends', () => {
+    expect(qrImageFileName('!!!hello!!!')).toBe('qr-hello.png');
   });
 });

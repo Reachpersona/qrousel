@@ -24,9 +24,16 @@
 }
 
 .qr-code {
-  width: 200px;
-  height: 200px;
+  /* Fill most of the width on a phone, but never grow taller than the space
+     the carousel has: min() keeps the code square and stops a wide desktop
+     window turning 80vw into something taller than the viewport. */
+  width: min(80vw, 60vh);
+  height: auto;
+  aspect-ratio: 1 / 1;
   object-fit: contain;
+  /* Scaling up must keep the module edges hard - smoothing softens exactly the
+     boundaries a scanner reads. */
+  image-rendering: pixelated;
 }
 
 .description {
@@ -46,11 +53,6 @@
 }
 
 @media (max-width: 768px) and (orientation: portrait) {
-  .qr-code {
-    max-height: 50vh;
-    width: auto;
-  }
-
   .description {
     width: 90%;
   }
@@ -60,7 +62,11 @@
   cursor: pointer;
   /* Let the carousel own horizontal swipes; a long press still reaches us. */
   touch-action: pan-y;
+  /* Stops iOS raising its own save-image callout on a long press. Chrome
+     ignores this and needs the contextmenu handler instead. */
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 

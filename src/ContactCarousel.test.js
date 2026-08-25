@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
+import QRCode from 'qrcode';
 import ContactCarousel from './ContactCarousel';
 
 jest.mock('qrcode', () => ({
@@ -14,6 +15,14 @@ if (typeof global.TextEncoder === 'undefined') {
 }
 
 describe('ContactCarousel', () => {
+  beforeEach(() => {
+    // Create React App sets resetMocks: true, which strips the implementation
+    // given in the jest.mock factory before every test. Without this the mock
+    // resolves undefined and every QR code silently falls back to the
+    // placeholder image.
+    QRCode.toDataURL.mockResolvedValue('data:image/png;base64,mock-qr-code');
+  });
+
   const renderWithContacts = async (data, props = {}) => {
     await act(async () => {
       render(
@@ -229,6 +238,39 @@ describe('ContactCarousel', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
+    it('suppresses the browser image menu during a long press', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      // Chrome ignores -webkit-touch-callout and raises contextmenu instead;
+      // its menu is browser chrome and would sit above our dialog.
+      const notPrevented = fireEvent.contextMenu(qr);
+
+      expect(notPrevented).toBe(false);
+    });
+
+    it('leaves the right-click menu alone when there was no touch', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      const notPrevented = fireEvent.contextMenu(qr);
+
+      // Desktop right-click must still offer Save image as.
+      expect(notPrevented).toBe(true);
+    });
+
+    it('hands the generated image to the popup so it can be saved', async () => {
+      await renderWithContacts(TWO);
+
+      fireEvent.click(screen.getByAltText('QR Code'));
+
+      // The QR data URLs arrive from their own effect, so wait for the link
+      // rather than assuming it is there the moment the dialog opens.
+      const link = await screen.findByRole('link', { name: /save image/i });
+      expect(link).toHaveAttribute('href', 'data:image/png;base64,mock-qr-code');
+    });
+
     it('closes the popup when the slide changes', async () => {
       await renderWithContacts(TWO);
       fireEvent.click(screen.getByAltText('QR Code'));
@@ -239,6 +281,18 @@ describe('ContactCarousel', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
+  it('generates QR codes large enough to survive being scaled up', async () => {
+    await renderWithContacts([
+      { url: 'https://example.com/one', description: 'Test Description 1' },
+    ]);
+
+    // The image is displayed at ~80% of the viewport width, so a 200px raster
+    // would be upscaled several times over and lose the crisp module edges a
+    // scanner needs.
+    const [, options] = QRCode.toDataURL.mock.calls[0];
+    expect(options.width).toBeGreaterThanOrEqual(800);
+  });
+
   describe('file actions', () => {
     const ONE = [{ url: 'https://example.com/one', description: 'Test Description 1' }];
 
