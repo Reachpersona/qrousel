@@ -1,0 +1,28 @@
+.help {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.help dd:last-of-type {
+  margin-bottom: 0;
+}
+
+.help dt {
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.help dt:first-child {
+  margin-top: 0;
+}
+
+.help dd {
+  margin: 2px 0 0;
+  color: #333;
+}
+
+.help-note {
+  font-size: 13px;
+  color: #666;
+  margin: 12px 0 0;
+}

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { marked } from 'marked';
 import QrContentsDialog from './QrContentsDialog';
+import HelpDialog from './HelpDialog';
+import VersionFooter from './VersionFooter';
 import './ContactCarousel.css';
 
 // A tap must not reveal the QR contents: the carousel swipes on touch, and a
@@ -20,6 +22,7 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [descriptionHtml, setDescriptionHtml] = useState(null);
   const [descriptionHeight, setDescriptionHeight] = useState(0);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const carouselRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const longPressStartRef = useRef(null);
@@ -241,7 +244,12 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           )}
         </button>
         <button onClick={onLoadFile}>Switch</button>
+        <button className="help-button" aria-label="Help" onClick={() => setIsHelpOpen(true)}>
+          ?
+        </button>
       </div>
+      <VersionFooter />
+      {isHelpOpen && <HelpDialog onClose={() => setIsHelpOpen(false)} />}
       {isQrDialogOpen && (
         <QrContentsDialog
           url={contacts[currentIndex]?.url}

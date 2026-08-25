@@ -63,66 +63,6 @@
   -webkit-touch-callout: none;
 }
 
-.qr-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.qr-dialog {
-  background: #fff;
-  color: #000;
-  border-radius: 8px;
-  padding: 16px;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.qr-dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.qr-dialog-title {
-  font-size: 16px;
-  margin: 0;
-}
-
-.qr-dialog-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 4px;
-}
-
-.qr-dialog-url {
-  /* URLs are long and arbitrary - never let one widen the dialog. */
-  overflow-wrap: anywhere;
-  word-break: break-all;
-  font-family: monospace;
-  user-select: all;
-  margin: 12px 0;
-}
-
-.qr-dialog-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.qr-dialog-note {
-  font-size: 13px;
-  color: #8a5b00;
-}
 
 /* The bottom quarter of the screen belongs to the file actions; the content
    takes the rest and centres itself inside it. Pushing the actions down with
@@ -176,4 +116,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.help-button {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  font-size: 16px;
+  /* A button's default padding and baseline alignment leave the glyph sitting
+     off-centre in a circle; centring it as a flex item ignores both. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
 }

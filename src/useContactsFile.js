@@ -25,6 +25,40 @@ export function findInvalidEntries(entries) {
   return invalid;
 }
 
+// A timestamp this function itself produced, so repeated Save As on the same
+// file replaces the stamp instead of stacking another one on the end.
+const OWN_TIMESTAMP = /-\d{8}-\d{6}$/;
+const YAML_EXTENSION = /^(.*)(\.ya?ml)$/i;
+
+/**
+ * A distinct name to offer in the Save As dialog, derived from the file in
+ * hand. The app holds a file handle, not a directory handle, so it cannot look
+ * at what is already on disk - the timestamp makes a collision unlikely rather
+ * than impossible, and the browser still confirms a genuine overwrite.
+ */
+export function suggestedFileName(currentName, date) {
+  const name = String(currentName || '').trim();
+  const match = name.match(YAML_EXTENSION);
+
+  let base = match ? match[1] : name;
+  const extension = match ? match[2] : '.yaml';
+
+  base = base.replace(OWN_TIMESTAMP, '') || 'qrdata';
+
+  const pad = (value) => String(value).padStart(2, '0');
+  const stamp = [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    '-',
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+    pad(date.getSeconds()),
+  ].join('');
+
+  return `${base}-${stamp}${extension}`;
+}
+
 export function serializeContacts(entries) {
   // js-yaml already emits `|` block scalars for multiline descriptions.
   // lineWidth: -1 stops long URLs being folded across lines.
@@ -51,6 +85,9 @@ export default function useContactsFile() {
   const [error, setError] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [canSaveInPlace, setCanSaveInPlace] = useState(false);
+  // True while the remembered file was written by someone else, so rewriting it
+  // would discard comments and formatting the app cannot reproduce.
+  const [isForeignFile, setIsForeignFile] = useState(false);
   // Held for the session only. A FileSystemFileHandle is not serializable, so
   // after a reload there is no link to the original file and Save As is the
   // only way to write.
@@ -97,6 +134,7 @@ export default function useContactsFile() {
       const parsed = yaml.load(await file.text());
 
       rememberFile(fileHandle, fileHandle.name || file.name);
+      setIsForeignFile(true);
       commit(parsed || []);
       setError(null);
       return { ok: true };
@@ -125,6 +163,7 @@ export default function useContactsFile() {
         if (permission !== 'granted') return { ok: false, reason: 'denied' };
 
         await writeEntries(fileHandle, entries);
+        setIsForeignFile(false);
         commit(entries);
         return { ok: true };
       } catch (e) {
@@ -146,13 +185,14 @@ export default function useContactsFile() {
 
       try {
         const fileHandle = await window.showSaveFilePicker({
-          suggestedName: 'qrdata.yaml',
+          suggestedName: suggestedFileName(fileName, new Date()),
           types: [YAML_FILE_TYPE],
         });
         await writeEntries(fileHandle, entries);
 
         // Only adopt the new file once the write actually landed.
         rememberFile(fileHandle);
+        setIsForeignFile(false);
         commit(entries);
         return { ok: true };
       } catch (e) {
@@ -161,10 +201,20 @@ export default function useContactsFile() {
         return { ok: false, reason: 'write-failed', message: e.message };
       }
     },
-    [commit, rememberFile]
+    [commit, rememberFile, fileName]
   );
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { contacts, error, fileName, canSaveInPlace, load, save, saveAs, clearError };
+  return {
+    contacts,
+    error,
+    fileName,
+    canSaveInPlace,
+    isForeignFile,
+    load,
+    save,
+    saveAs,
+    clearError,
+  };
 }

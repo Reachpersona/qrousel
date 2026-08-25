@@ -35,9 +35,45 @@ The `qrdata.yaml` file contains the qrcode data that will be used by the applica
 2.  **Add QR Data:** Add the QR data in the YAML format shown above.
 3.  **Save the File:** Save the `qrdata.yaml` file.
 
+## 1a. Editing `qrdata.yaml` in the app
+
+You do not have to hand-edit the file. In Chrome or Edge, load a `qrdata.yaml`
+and press the **Edit** button (the pencil, which shows the current file name) to
+add, change, delete, and reorder entries.
+
+* **Save** writes back to the file you opened.
+* **Save As** writes a new file and leaves the original untouched. It suggests a
+  timestamped name derived from the current file (`qrdata-20260825-143210.yaml`),
+  so repeated saves do not silently overwrite one another.
+* **Switch** opens a different `qrdata.yaml`.
+* **?** opens a short help panel.
+
+**Saving rewrites the whole file, and comments do not survive.** The app parses
+the YAML into entries and writes fresh YAML back out, so comments, blank lines,
+and quoting style in a hand-written file are lost. The entries themselves - and
+any extra keys on them - are kept. The app warns you once before it overwrites a
+file it did not write; choose **Save As instead** if you want to keep the
+original.
+
+If you keep annotated `qrdata.yaml` files, either keep the annotated copy
+somewhere the app does not write to, or accept that editing in the app is the
+point at which the comments go.
+
+A `url` is not limited to a web address. Any QR payload works - `mailto:`,
+`tel:`, `WIFI:S=...;`, a vCard, or plain text. Only `http` and `https` payloads
+can be opened from the QR contents popup; anything else is shown as text.
+
+After a page reload the app still has your entries, but not the link to the file
+they came from, so **Save** is unavailable until you use **Save As** or open a
+file again.
+
 ## 2. Running the Build Script
 
-The `yaml-to-json.js` script converts the `qrdata.yaml` file into `qrdata.js`, which is used by the React application.
+The `yaml-to-json.js` script converts the `qrdata.yaml` file into `qrdata.js`.
+
+> **Note:** the running application no longer reads `src/data/qrdata.js`. It loads
+> `qrdata.yaml` at runtime through the file picker and remembers it in
+> `localStorage`, so this step is not needed to use the app.
 
 **Steps:**
 
