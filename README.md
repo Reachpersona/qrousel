@@ -42,7 +42,9 @@ and press the **Edit** button (the pencil, which shows the current file name) to
 add, change, delete, and reorder entries.
 
 * **Save** writes back to the file you opened.
-* **Save As** writes a new file and leaves the original untouched.
+* **Save As** writes a new file and leaves the original untouched. It suggests a
+  timestamped name derived from the current file (`qrdata-20260825-143210.yaml`),
+  so repeated saves do not silently overwrite one another.
 * **Switch** opens a different `qrdata.yaml`.
 * **?** opens a short help panel.
 

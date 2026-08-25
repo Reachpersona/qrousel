@@ -334,6 +334,18 @@ describe('App', () => {
       expect(localStorage.getItem('contactsData')).toBeNull();
     });
 
+    it('offers a timestamped name rather than always suggesting qrdata.yaml', async () => {
+      savePicker.mockResolvedValue(makeHandle('copy.yaml'));
+      await loadFile();
+      await click(/^Edit\b/);
+
+      await click(/Save As/);
+
+      const { suggestedName } = savePicker.mock.calls[0][0];
+      expect(suggestedName).toMatch(/^qrdata-\d{8}-\d{6}\.yaml$/);
+      expect(suggestedName).not.toBe('qrdata.yaml');
+    });
+
     it('offers Save once a file has been written with Save As', async () => {
       savePicker.mockResolvedValue(makeHandle('new.yaml'));
       await renderApp();
