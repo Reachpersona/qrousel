@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { marked } from 'marked';
 import QrContentsDialog from './QrContentsDialog';
 import HelpDialog from './HelpDialog';
+import VersionFooter from './VersionFooter';
 import './ContactCarousel.css';
 
 // A tap must not reveal the QR contents: the carousel swipes on touch, and a
@@ -247,6 +248,7 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           ?
         </button>
       </div>
+      <VersionFooter />
       {isHelpOpen && <HelpDialog onClose={() => setIsHelpOpen(false)} />}
       {isQrDialogOpen && (
         <QrContentsDialog

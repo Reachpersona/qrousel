@@ -64,6 +64,12 @@ Navigation tests use `renderWithContacts` (renders *and* loads the fixture throu
 
 `CI=true npx react-scripts build` fails on three pre-existing lint warnings (a missing `showSlide` dependency in the swipe effect, and two redundant `role="button"` attributes). Plain `npm run build` compiles with those as warnings. This is unrelated to any recent change - do not treat a red `CI=true` build as a regression without checking these three first.
 
+**Not a PWA.** `public/manifest.json` exists and is linked, so the app is installable, but there is no service worker anywhere - CRA 5 dropped the default one and this project never added `cra-template-pwa` or workbox. Nothing caches the app shell, so a redeploy reaches users on their next load and there is no update prompt to build. `public/index.html` nevertheless carries a meta tag describing the app as "A PWA", with `name` set to the app title rather than `description`; both are wrong and neither has been changed.
+
+**Version footer.** `src/VersionFooter.js` renders `REACT_APP_VERSION` and `REACT_APP_BUILD_TIME`, read at render (not module load) so tests can set them and a missing value degrades to `vdev`. The npm `start`, `build`, and `build-gh-pages` scripts inject both; running `npx react-scripts start` directly bypasses that and shows `vdev`.
+
+**`homepage` changes the asset path.** `package.json` sets `homepage` to the GitHub Pages URL, so `PUBLIC_URL` is `/qrousel` and the dev server serves assets at `/qrousel/static/js/bundle.js`. Requesting `/static/js/bundle.js` returns `index.html` via the SPA fallback with a 200 - a smoke test that curls that path proves nothing.
+
 ## Deployment
 
 GitHub Pages via `gh-pages`. `homepage` is hardcoded in `package.json` (`https://reachpersona.github.io/qrousel/`) — change it there when deploying to a different repo. Note the README describes a `REACT_APP_GH_PAGES` env var and a `build-gh-pages` script that rewrites `homepage`; neither exists in the current code (`build-gh-pages` is a plain `react-scripts build`, and the URL argument `predeploy` passes it is ignored).

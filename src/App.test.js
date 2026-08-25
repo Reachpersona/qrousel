@@ -105,6 +105,20 @@ describe('App', () => {
       expect(screen.getByText('Test Description 1')).toBeInTheDocument();
     });
 
+    it('shows the version before any file has been chosen', async () => {
+      await renderApp();
+
+      expect(screen.getByTestId('version-footer')).toBeInTheDocument();
+    });
+
+    it('shows the version on the error screen too', async () => {
+      localStorage.setItem('contactsData', '{not json');
+
+      await renderApp();
+
+      expect(screen.getByTestId('version-footer')).toBeInTheDocument();
+    });
+
     it('reports a browser without the file system access api', async () => {
       delete window.showOpenFilePicker;
       await renderApp();

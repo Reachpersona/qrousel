@@ -3,6 +3,7 @@ import useContactsFile, { findInvalidEntries } from './useContactsFile';
 import ContactCarousel from './ContactCarousel';
 import ContactEditor from './ContactEditor';
 import OverwriteWarning from './OverwriteWarning';
+import VersionFooter from './VersionFooter';
 
 const NO_HANDLE_REASON =
   'Save As is the only way to write this file. Either it has not been saved yet, or the link to it was lost when the page reloaded.';
@@ -147,6 +148,7 @@ function App() {
         <div>Error: {error}</div>
         <button onClick={handleLoad}>Select qrdata.yaml</button>
         <button onClick={createNew}>Create a new qrdata.yaml</button>
+        <VersionFooter />
       </div>
     );
   }
@@ -157,6 +159,7 @@ function App() {
         <div>No contacts available. Please select a file.</div>
         <button onClick={handleLoad}>Select qrdata.yaml</button>
         <button onClick={createNew}>Create a new qrdata.yaml</button>
+        <VersionFooter />
       </div>
     );
   }

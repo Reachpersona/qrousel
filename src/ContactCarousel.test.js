@@ -326,6 +326,19 @@ describe('ContactCarousel', () => {
       expect(screen.queryByRole('dialog', { name: /help/i })).not.toBeInTheDocument();
     });
 
+    it('shows the running version', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      expect(screen.getByTestId('version-footer')).toBeInTheDocument();
+    });
+
+    it('keeps the version footer outside the centred content area', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      const main = document.querySelector('.carousel-main');
+      expect(main).not.toContainElement(screen.getByTestId('version-footer'));
+    });
+
     it('keeps the file actions outside the centred content area', async () => {
       await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
 
