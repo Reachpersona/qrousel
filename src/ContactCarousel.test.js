@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
+import QRCode from 'qrcode';
 import ContactCarousel from './ContactCarousel';
 
 jest.mock('qrcode', () => ({
@@ -239,6 +240,18 @@ describe('ContactCarousel', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
+  it('generates QR codes large enough to survive being scaled up', async () => {
+    await renderWithContacts([
+      { url: 'https://example.com/one', description: 'Test Description 1' },
+    ]);
+
+    // The image is displayed at ~80% of the viewport width, so a 200px raster
+    // would be upscaled several times over and lose the crisp module edges a
+    // scanner needs.
+    const [, options] = QRCode.toDataURL.mock.calls[0];
+    expect(options.width).toBeGreaterThanOrEqual(800);
+  });
+
   describe('file actions', () => {
     const ONE = [{ url: 'https://example.com/one', description: 'Test Description 1' }];
 

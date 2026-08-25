@@ -15,6 +15,7 @@ const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 // enough to cover the browser's click delay, short enough that a real mouse
 // click on a hybrid device is not swallowed.
 const CLICK_AFTER_TOUCH_MS = 600;
+const QR_PIXEL_SIZE = 1024;
 
 function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [qrCodes, setQrCodes] = useState([]);
@@ -35,7 +36,10 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
         const codes = await Promise.all(
           contacts.map(async (contact) => {
             try {
-              return await QRCode.toDataURL(contact.url, { width: 200 });
+              // Rendered at ~80% of the viewport width, so generate well above
+              // that: a small raster upscaled on a high-DPI screen blurs the
+              // module edges a scanner needs. ~10 KiB per code as a data URL.
+              return await QRCode.toDataURL(contact.url, { width: QR_PIXEL_SIZE });
             } catch (error) {
               console.error(`Error generating QR code for ${contact.url}:`, error);
               return '/placeholder.png';
