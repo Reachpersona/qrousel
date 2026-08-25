@@ -109,6 +109,7 @@ function App() {
       <div>
         <div>Error: {error}</div>
         <button onClick={handleLoad}>Select qrdata.yaml</button>
+        <button onClick={createNew}>Create a new qrdata.yaml</button>
       </div>
     );
   }

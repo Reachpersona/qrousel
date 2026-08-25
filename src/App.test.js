@@ -124,6 +124,17 @@ describe('App', () => {
       expect(localStorage.getItem('contactsData')).toBeNull();
     });
 
+    it('can start a new file from the error screen', async () => {
+      // The error screen must not be a dead end: the stored data was just
+      // discarded, so starting fresh is the obvious way out.
+      localStorage.setItem('contactsData', '{not json');
+      await renderApp();
+
+      await click(/Create a new qrdata\.yaml/i);
+
+      expect(screen.getByText('Edit qrdata.yaml')).toBeInTheDocument();
+    });
+
     it('recovers instead of crashing when saved contacts are corrupt', async () => {
       localStorage.setItem('contactsData', '{not json');
 
@@ -395,6 +406,21 @@ describe('App', () => {
       expect(yaml.load(writes[0].text)).toEqual(CONTACTS);
     });
   });
+  describe('data saved by an earlier version', () => {
+    it('shows the carousel with no file name when only contacts were stored', async () => {
+      // Every existing user has contactsData in localStorage from a build that
+      // never wrote contactsFileName, so this is the upgrade path, not a
+      // hypothetical.
+      localStorage.setItem('contactsData', JSON.stringify(CONTACTS));
+
+      await renderApp();
+      await screen.findByText('Test Description 1');
+
+      expect(screen.getByRole('button', { name: /^Edit$/ })).toBeInTheDocument();
+      expect(screen.queryByTestId('file-name')).not.toBeInTheDocument();
+    });
+  });
+
   describe('after a reload', () => {
     // A reload keeps localStorage but loses everything held in memory.
     const reload = async () => {
