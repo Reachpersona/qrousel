@@ -39,6 +39,8 @@ Effect chain in `ContactCarousel.js`, in order — changing one usually means ch
 
 Gesture split on the QR image: a mouse click opens the dialog, but on touch only a 500ms press does. A tap must not open it, because the carousel swipes on touch and a swipe still emits a trailing `click`. `isTouchInteractionRef` suppresses that trailing click for 600ms after a touch sequence, which is also why a mouse click on a hybrid device still works once the touch has settled.
 
+**Authoring.** `src/App.js` owns the mode (`view` / `edit`) and the in-progress draft; `src/useContactsFile.js` owns the *committed* contacts and the file handle. The hook deliberately exposes no `setContacts` - `save(draft)`/`saveAs(draft)` take the entries and commit them only after the write succeeds, so a denied permission or a failed write cannot leave half-saved data in localStorage. The `FileSystemFileHandle` is session-only (it is not serializable), so after a reload Save is not offered and Save As is the only way to write. Reading a file does not grant writing it: `save` upgrades via `queryPermission`/`requestPermission({ mode: 'readwrite' })`, and the Save click is the user gesture that prompt requires.
+
 **Legacy build-time path.** `yaml-to-json.js` + `src/data/qrdata.js` predate the runtime loader (commit 75d8134 "contact data needed only at runtime"). `qrdata.js` is now imported only by `ContactCarousel.test.js`, and even there it is unused. Treat it as test fixture / dead weight, not as the app's data source. `.gitignore` still lists the pre-rename `src/data/contacts.js`, so the generated `qrdata.js` is committed.
 
 ## Tests
@@ -54,6 +56,9 @@ Two traps this suite has already fallen into once — check both when adding tes
 
 - **jsdom has no `PointerEvent`.** `fireEvent.pointerDown(el, { pointerType: 'touch', clientX: 10 })` silently drops every property - the handler receives an empty event. This is why the long-press uses touch events rather than pointer events. Do not reach for pointer events in this suite without polyfilling first.
 - **Touch fixtures need `changedTouches` and screen coordinates.** The swipe handler reads `e.changedTouches[0].screenX`, so a fixture supplying only `touches` throws inside a handler you were not even testing. The `touchEvent(x, y)` helper populates `touches`, `changedTouches`, `clientX/Y`, and `screenX/Y` together.
+
+- **A fake `FileSystemFileHandle` must not resolve `requestPermission` to `'prompt'`.** The real API only ever answers `granted` or `denied`; a fake that echoes `prompt` back makes the permission upgrade look broken when it is not.
+- **A guard behind a disabled button is unreachable, so its mutation survives.** `moveEntryAt` is exported from `ContactEditor` as a pure function for exactly this reason - the end-of-list guard cannot be reached by clicking, so it is unit-tested directly.
 
 Navigation tests use `renderWithContacts` (renders *and* loads the fixture through the picker) and `expectSlide(data, index)`, which asserts the expected description is present and every other slide's description is absent. The negative half is what makes these tests fail when navigation breaks. Verified by mutation: a no-op `showSlide` fails 4 tests, and clamping either wrap direction fails exactly the matching wrap test.
 

@@ -1,9 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
-import * as fs from 'fs';
-import yaml from 'js-yaml';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import ContactCarousel from './ContactCarousel';
-import qrcodeData from './data/qrdata.js';
 
 jest.mock('qrcode', () => ({
   toDataURL: jest.fn(() => Promise.resolve('data:image/png;base64,mock-qr-code')),
@@ -16,41 +13,10 @@ if (typeof global.TextEncoder === 'undefined') {
   global.TextDecoder = TextDecoder;
 }
 
-// Mock both fs and window.showOpenFilePicker
-jest.mock('fs', () => ({
-  readFileSync: jest.fn(),
-  existsSync: jest.fn(),
-}));
-
-// Mock window.showOpenFilePicker
-const mockShowOpenFilePicker = jest.fn();
-global.window = Object.create(window);
-global.window.showOpenFilePicker = mockShowOpenFilePicker;
-
 describe('ContactCarousel', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockShowOpenFilePicker.mockReset();
-    localStorage.clear();
-    global.window = Object.create(window);
-    global.window.showOpenFilePicker = mockShowOpenFilePicker;
-  });
-
-  // Helper function to mock file selection
-  const mockFileSelection = (data) => {
-    mockShowOpenFilePicker.mockResolvedValue([{ getFile: () => ({ text: () => Promise.resolve(yaml.dump(data)) }) }]);
-  };
-
-  // Render and actually load the fixture through the file picker. Without the
-  // click the carousel stays on the empty state, and the navigation controls
-  // never render.
   const renderWithContacts = async (data) => {
-    mockFileSelection(data);
     await act(async () => {
-      render(<ContactCarousel />);
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Select qrdata\.yaml/i }));
+      render(<ContactCarousel contacts={data} onLoadFile={() => {}} onEdit={() => {}} />);
     });
     await screen.findByText(data[0].description);
   };
@@ -77,96 +43,6 @@ describe('ContactCarousel', () => {
       }
     });
   };
-
-  const clickSelectFile = () => clickControl(/Select qrdata\.yaml/i);
-
-  // The error branch replaces the carousel entirely, so nothing from the
-  // loaded-contacts UI may survive it.
-  const expectNoCarousel = () => {
-    expect(screen.queryByRole('button', { name: /Next slide/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Previous slide/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId('description')).not.toBeInTheDocument();
-  };
-
-  it('displays an error message when the file system access API is not supported', async () => {
-    delete global.window.showOpenFilePicker;
-
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-
-    // The API check lives inside loadContactsFromFile, so mounting alone must
-    // not surface an error - the user has not asked for a file yet.
-    expect(
-      screen.queryByText(/File System Access API is not supported/)
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('No contacts available. Please select a file.')).toBeInTheDocument();
-
-    await clickSelectFile();
-
-    expect(
-      screen.getByText('Error: File System Access API is not supported in this browser.')
-    ).toBeInTheDocument();
-    expectNoCarousel();
-  });
-
-  it('displays an error message when file loading fails', async () => {
-    mockShowOpenFilePicker.mockRejectedValue(new Error('Failed to load file'));
-
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-
-    await clickSelectFile();
-
-    expect(screen.getByText('Error: Failed to load file')).toBeInTheDocument();
-    expectNoCarousel();
-  });
-
-  it('does not persist contacts to localStorage when loading fails', async () => {
-    mockShowOpenFilePicker.mockRejectedValue(new Error('Failed to load file'));
-
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-
-    await clickSelectFile();
-
-    expect(localStorage.getItem('contactsData')).toBeNull();
-  });
-
-  it('recovers instead of crashing when saved contacts are corrupt', async () => {
-    localStorage.setItem('contactsData', '{not json');
-
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-
-    // The user must land on something actionable, not a blank screen.
-    expect(screen.getByText(/Saved contact data was invalid/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Select qrdata\.yaml/i })).toBeInTheDocument();
-    // The unreadable entry is cleared, so a reload cannot hit this again.
-    expect(localStorage.getItem('contactsData')).toBeNull();
-    expectNoCarousel();
-  });
-
-  it('loads contacts from a selected file', async () => {
-    // Mock the file selection and file content
-    const mockContactsData = [
-      { url: 'https://example.com/test', description: 'Test Description' },
-    ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-    const selectFileButton = screen.getByRole('button', { name: /Select qrdata.yaml/i });
-    await act(async () => {
-      fireEvent.click(selectFileButton);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
-  });
 
   it('renders the first contact on initial render', async () => {
     const mockContactsData = [

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { marked } from 'marked';
-import yaml from 'js-yaml';
 import QrContentsDialog from './QrContentsDialog';
 import './ContactCarousel.css';
 
@@ -15,57 +14,17 @@ const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 // click on a hybrid device is not swallowed.
 const CLICK_AFTER_TOUCH_MS = 600;
 
-function ContactCarousel() {
-  const [contacts, setContacts] = useState([]);
+function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [qrCodes, setQrCodes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [descriptionHtml, setDescriptionHtml] = useState(null);
   const [descriptionHeight, setDescriptionHeight] = useState(0);
-  const [error, setError] = useState(null);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const carouselRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const longPressStartRef = useRef(null);
   const clickSuppressTimerRef = useRef(null);
   const isTouchInteractionRef = useRef(false);
-
-  const loadContactsFromFile = async () => {
-    try {
-      if ('showOpenFilePicker' in window) {
-        const [fileHandle] = await window.showOpenFilePicker({
-          types: [
-            {
-              description: 'YAML Files',
-              accept: { 'application/x-yaml': ['.yaml', '.yml'] },
-            },
-          ],
-        });
-        const file = await fileHandle.getFile();
-        const yamlText = await file.text();
-        const parsedContacts = yaml.load(yamlText);
-        setContacts(parsedContacts || []);
-        localStorage.setItem('contactsData', JSON.stringify(parsedContacts)); // Save to localStorage
-        setError(null);
-      } else {
-        throw new Error('File System Access API is not supported in this browser.');
-      }
-    } catch (error) {
-      console.error('Error loading qrdata.yaml:', error);
-      setError(error.message);
-    }
-  };
-
-  useEffect(() => {
-    const savedContacts = localStorage.getItem('contactsData');
-    if (savedContacts) {
-      try {
-        setContacts(JSON.parse(savedContacts));
-      } catch (e) {
-        setError('Saved contact data was invalid and has been cleared. Please select your qrdata.yaml file again.');
-        localStorage.removeItem('contactsData');
-      }
-    }
-  }, []);
 
   useEffect(() => {
     const generateQRCodes = async () => {
@@ -219,24 +178,6 @@ function ContactCarousel() {
     }
   };
 
-  if (error) {
-    return (
-      <div>
-        <div>Error: {error}</div>
-        <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
-      </div>
-    );
-  }
-
-  if (contacts.length === 0) {
-    return (
-      <div>
-        <div>No contacts available. Please select a file.</div>
-        <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
-      </div>
-    );
-  }
-
   return (
     <div className="ContactCarousel" ref={carouselRef}>
       <div className="carousel-item">
@@ -278,7 +219,9 @@ function ContactCarousel() {
         </button>
       </div>
       <div className="load-new-file">
-        <button onClick={loadContactsFromFile}>Load a different qrdata.yaml</button>
+        {fileName && <p className="file-name">{fileName}</p>}
+        <button onClick={onEdit}>Edit</button>
+        <button onClick={onLoadFile}>Load a different qrdata.yaml</button>
       </div>
       {isQrDialogOpen && (
         <QrContentsDialog
