@@ -180,47 +180,49 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
 
   return (
     <div className="ContactCarousel" ref={carouselRef}>
-      <div className="carousel-item">
-        <div className="carousel-content">
-          <img
-            src={qrCodes[currentIndex] || '/placeholder.png'}
-            alt="QR Code"
-            className="qr-code"
-            onClick={handleQrClick}
-            onTouchStart={handleQrTouchStart}
-            onTouchMove={handleQrTouchMove}
-            onTouchEnd={handleQrTouchEnd}
-            onTouchCancel={handleQrTouchEnd}
-          />
-          <div
-            data-testid="description"
-            className="description"
-            style={{ minHeight: `${descriptionHeight}px` }}
-            dangerouslySetInnerHTML={{
-              __html: descriptionHtml || 'Loading description...',
-            }}
-          />
+      <div className="carousel-main">
+        <div className="carousel-item">
+          <div className="carousel-content">
+            <img
+              src={qrCodes[currentIndex] || '/placeholder.png'}
+              alt="QR Code"
+              className="qr-code"
+              onClick={handleQrClick}
+              onTouchStart={handleQrTouchStart}
+              onTouchMove={handleQrTouchMove}
+              onTouchEnd={handleQrTouchEnd}
+              onTouchCancel={handleQrTouchEnd}
+            />
+            <div
+              data-testid="description"
+              className="description"
+              style={{ minHeight: `${descriptionHeight}px` }}
+              dangerouslySetInnerHTML={{
+                __html: descriptionHtml || 'Loading description...',
+              }}
+            />
+          </div>
         </div>
-      </div>
-      <div className="controls">
-        <button
-          role="button"
-          aria-label="Previous slide"
-          onClick={() => showSlide(currentIndex - 1)}
-        >
-          &lt;
-        </button>
-        <button
-          role="button"
-          aria-label="Next slide"
-          onClick={() => showSlide(currentIndex + 1)}
-        >
-          &gt;
-        </button>
-      </div>
-      <div className="load-new-file">
-        <button onClick={onEdit}>Edit</button>
-        <button onClick={onLoadFile}>Load a different qrdata.yaml</button>
+        <div className="controls">
+          <button
+            role="button"
+            aria-label="Previous slide"
+            onClick={() => showSlide(currentIndex - 1)}
+          >
+            &lt;
+          </button>
+          <button
+            role="button"
+            aria-label="Next slide"
+            onClick={() => showSlide(currentIndex + 1)}
+          >
+            &gt;
+          </button>
+        </div>
+        <div className="load-new-file">
+          <button onClick={onEdit}>Edit</button>
+          <button onClick={onLoadFile}>Load a different qrdata.yaml</button>
+        </div>
       </div>
       {isQrDialogOpen && (
         <QrContentsDialog

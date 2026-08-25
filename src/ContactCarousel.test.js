@@ -254,6 +254,18 @@ describe('ContactCarousel', () => {
       expect(screen.queryByTestId('file-name')).not.toBeInTheDocument();
     });
 
+    it('keeps the file name outside the centred content area', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      // The content is centred inside .carousel-main; the file name sits after
+      // it. Making the file name a flex sibling of the content and pushing it
+      // down with margin-top:auto instead would absorb all the free space and
+      // defeat the centring, packing the content against the top of the page.
+      const main = document.querySelector('.carousel-main');
+      expect(main).toContainElement(screen.getByAltText('QR Code'));
+      expect(main).not.toContainElement(screen.getByTestId('file-name'));
+    });
+
     it('keeps the file name out of the button group', async () => {
       await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
 

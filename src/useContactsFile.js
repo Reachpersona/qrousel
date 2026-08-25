@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import yaml from 'js-yaml';
 
 const STORAGE_KEY = 'contactsData';
+const FILE_NAME_KEY = 'contactsFileName';
 
 export const UNSUPPORTED_MESSAGE = 'File System Access API is not supported in this browser.';
 export const CORRUPT_STORAGE_MESSAGE =
@@ -60,18 +61,25 @@ export default function useContactsFile() {
     if (!saved) return;
     try {
       setContacts(JSON.parse(saved));
+      // The name is a plain string and survives a reload; the handle does not,
+      // so canSaveInPlace stays false and Save is still not offered. Showing
+      // where the data came from is what makes that explainable.
+      setFileName(localStorage.getItem(FILE_NAME_KEY));
     } catch (e) {
       setError(CORRUPT_STORAGE_MESSAGE);
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(FILE_NAME_KEY);
     }
   }, []);
 
   // Adopting a file is one step, not three: a handle that is remembered while
   // canSaveInPlace still says otherwise is a state the UI cannot report.
   const rememberFile = useCallback((fileHandle, name) => {
+    const resolved = name || fileHandle.name || null;
     fileHandleRef.current = fileHandle;
     setCanSaveInPlace(true);
-    setFileName(name || fileHandle.name || null);
+    setFileName(resolved);
+    if (resolved) localStorage.setItem(FILE_NAME_KEY, resolved);
   }, []);
 
   const commit = useCallback((entries) => {

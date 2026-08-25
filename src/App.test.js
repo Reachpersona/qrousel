@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import yaml from 'js-yaml';
 import App from './App';
 
@@ -393,6 +393,46 @@ describe('App', () => {
 
       await waitFor(() => expect(writes).toHaveLength(1));
       expect(yaml.load(writes[0].text)).toEqual(CONTACTS);
+    });
+  });
+  describe('after a reload', () => {
+    // A reload keeps localStorage but loses everything held in memory.
+    const reload = async () => {
+      cleanup();
+      await renderApp();
+      await screen.findByText('Test Description 1');
+    };
+
+    it('still shows the name of the file the data came from', async () => {
+      await loadFile();
+
+      await reload();
+
+      expect(screen.getByTestId('file-name')).toHaveTextContent('qrdata.yaml');
+    });
+
+    it('does not offer Save, because the link to the file did not survive', async () => {
+      await loadFile();
+      await reload();
+
+      await click(/^Edit$/);
+
+      expect(screen.queryByRole('button', { name: /^Save$/ })).not.toBeInTheDocument();
+      expect(screen.getByText(/Save As is the only way to write this file/)).toBeInTheDocument();
+    });
+
+    it('forgets the file name when the stored contacts were corrupt', async () => {
+      await loadFile();
+      expect(localStorage.getItem('contactsFileName')).toBe('qrdata.yaml');
+      localStorage.setItem('contactsData', '{not json');
+
+      cleanup();
+      await renderApp();
+
+      expect(screen.queryByTestId('file-name')).not.toBeInTheDocument();
+      // The name describes data that has just been thrown away, so it must go
+      // with it rather than linger and attach itself to whatever loads next.
+      expect(localStorage.getItem('contactsFileName')).toBeNull();
     });
   });
 });

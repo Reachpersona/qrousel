@@ -124,15 +124,28 @@
   color: #8a5b00;
 }
 
-.file-name {
-  /* Sits at the bottom of the viewport: the carousel is a centred flex column,
-     so an auto top margin absorbs the remaining space and pushes this down
-     without taking it out of flow and overlapping the controls. */
-  margin: auto 0 0;
+/* The content takes all the space left over and centres itself inside it, so
+   the file name below can sit at the bottom of the page without affecting it.
+   Pushing the file name down with margin-top:auto instead does not work: auto
+   margins absorb the free space before justify-content is applied, which
+   silently defeats the centring and packs the content against the top. */
+.carousel-main {
+  flex: 1;
+  min-height: 0;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-name {
+  flex-shrink: 0;
+  width: 100%;
+  margin: 0;
+  padding: 8px 0;
   text-align: center;
   font-family: monospace;
   font-size: 13px;
   color: #666;
-  padding-bottom: 8px;
 }
