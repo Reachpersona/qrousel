@@ -1,55 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { marked } from 'marked';
-import yaml from 'js-yaml';
+import QrContentsDialog from './QrContentsDialog';
 import './ContactCarousel.css';
 
-function ContactCarousel() {
-  const [contacts, setContacts] = useState([]);
+// A tap must not reveal the QR contents: the carousel swipes on touch, and a
+// swipe still emits a click afterwards. On touch only a deliberate press opens
+// the dialog; on a mouse a plain click does.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
+// How long after a touch sequence the synthetic click is still ignored. Long
+// enough to cover the browser's click delay, short enough that a real mouse
+// click on a hybrid device is not swallowed.
+const CLICK_AFTER_TOUCH_MS = 600;
+
+function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [qrCodes, setQrCodes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [descriptionHtml, setDescriptionHtml] = useState(null);
   const [descriptionHeight, setDescriptionHeight] = useState(0);
-  const [error, setError] = useState(null);
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const carouselRef = useRef(null);
-
-  const loadContactsFromFile = async () => {
-    try {
-      if ('showOpenFilePicker' in window) {
-        const [fileHandle] = await window.showOpenFilePicker({
-          types: [
-            {
-              description: 'YAML Files',
-              accept: { 'application/x-yaml': ['.yaml', '.yml'] },
-            },
-          ],
-        });
-        const file = await fileHandle.getFile();
-        const yamlText = await file.text();
-        const parsedContacts = yaml.load(yamlText);
-        setContacts(parsedContacts || []);
-        localStorage.setItem('contactsData', JSON.stringify(parsedContacts)); // Save to localStorage
-        setError(null);
-      } else {
-        throw new Error('File System Access API is not supported in this browser.');
-      }
-    } catch (error) {
-      console.error('Error loading qrdata.yaml:', error);
-      setError(error.message);
-    }
-  };
-
-  useEffect(() => {
-    const savedContacts = localStorage.getItem('contactsData');
-    if (savedContacts) {
-      try {
-        setContacts(JSON.parse(savedContacts));
-      } catch (e) {
-        setError(new Error("Invalid data in localStorage"));
-        localStorage.removeItem('contactsData');
-      }
-    }
-  }, []);
+  const longPressTimerRef = useRef(null);
+  const longPressStartRef = useRef(null);
+  const clickSuppressTimerRef = useRef(null);
+  const isTouchInteractionRef = useRef(false);
 
   useEffect(() => {
     const generateQRCodes = async () => {
@@ -128,6 +103,70 @@ function ContactCarousel() {
     };
   }, [currentIndex, contacts]);
 
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current !== null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartRef.current = null;
+  };
+
+  // Clean up anything still pending when the component goes away.
+  useEffect(() => {
+    return () => {
+      cancelLongPress();
+      if (clickSuppressTimerRef.current !== null) {
+        clearTimeout(clickSuppressTimerRef.current);
+      }
+    };
+  }, []);
+
+  // The dialog shows the URL of the slide it was opened on, so it must not
+  // outlive that slide.
+  useEffect(() => {
+    setIsQrDialogOpen(false);
+  }, [currentIndex]);
+
+  const handleQrTouchStart = (e) => {
+    isTouchInteractionRef.current = true;
+    if (clickSuppressTimerRef.current !== null) {
+      clearTimeout(clickSuppressTimerRef.current);
+      clickSuppressTimerRef.current = null;
+    }
+
+    cancelLongPress();
+    const point = e.touches[0];
+    longPressStartRef.current = { x: point.clientX, y: point.clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      setIsQrDialogOpen(true);
+    }, LONG_PRESS_MS);
+  };
+
+  const handleQrTouchMove = (e) => {
+    const start = longPressStartRef.current;
+    if (!start) return;
+    const point = e.touches[0];
+    if (Math.hypot(point.clientX - start.x, point.clientY - start.y) > LONG_PRESS_MOVE_TOLERANCE_PX) {
+      cancelLongPress();
+    }
+  };
+
+  const handleQrTouchEnd = () => {
+    cancelLongPress();
+    // The click that trails a tap or a swipe must not open the dialog, but a
+    // genuine mouse click later on still should.
+    clickSuppressTimerRef.current = setTimeout(() => {
+      clickSuppressTimerRef.current = null;
+      isTouchInteractionRef.current = false;
+    }, CLICK_AFTER_TOUCH_MS);
+  };
+
+  const handleQrClick = () => {
+    if (isTouchInteractionRef.current) return;
+    setIsQrDialogOpen(true);
+  };
+
   const showSlide = (index) => {
     if (contacts.length === 0) return;
     if (index < 0) {
@@ -139,62 +178,76 @@ function ContactCarousel() {
     }
   };
 
-  if (error) {
-    return (
-      <div>
-        <div>Error: {error}</div>
-        <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
-      </div>
-    );
-  }
-
-  if (contacts.length === 0) {
-    return (
-      <div>
-        <div>No contacts available. Please select a file.</div>
-        <button onClick={loadContactsFromFile}>Select qrdata.yaml</button>
-      </div>
-    );
-  }
-
   return (
     <div className="ContactCarousel" ref={carouselRef}>
-      <div className="carousel-item">
-        <div className="carousel-content">
-          <img
-            src={qrCodes[currentIndex] || '/placeholder.png'}
-            alt="QR Code"
-            className="qr-code"
-          />
-          <div
-            data-testid="description"
-            className="description"
-            style={{ minHeight: `${descriptionHeight}px` }}
-            dangerouslySetInnerHTML={{
-              __html: descriptionHtml || 'Loading description...',
-            }}
-          />
+      <div className="carousel-main">
+        <div className="carousel-item">
+          <div className="carousel-content">
+            <img
+              src={qrCodes[currentIndex] || '/placeholder.png'}
+              alt="QR Code"
+              className="qr-code"
+              onClick={handleQrClick}
+              onTouchStart={handleQrTouchStart}
+              onTouchMove={handleQrTouchMove}
+              onTouchEnd={handleQrTouchEnd}
+              onTouchCancel={handleQrTouchEnd}
+            />
+            <div
+              data-testid="description"
+              className="description"
+              style={{ minHeight: `${descriptionHeight}px` }}
+              dangerouslySetInnerHTML={{
+                __html: descriptionHtml || 'Loading description...',
+              }}
+            />
+          </div>
+        </div>
+        <div className="controls">
+          <button
+            role="button"
+            aria-label="Previous slide"
+            onClick={() => showSlide(currentIndex - 1)}
+          >
+            &lt;
+          </button>
+          <button
+            role="button"
+            aria-label="Next slide"
+            onClick={() => showSlide(currentIndex + 1)}
+          >
+            &gt;
+          </button>
         </div>
       </div>
-      <div className="controls">
+      <div className="file-actions">
         <button
-          role="button"
-          aria-label="Previous slide"
-          onClick={() => showSlide(currentIndex - 1)}
+          className="edit-button"
+          aria-label={fileName ? `Edit ${fileName}` : 'Edit'}
+          onClick={onEdit}
         >
-          &lt;
+          <svg className="pencil-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M4 20h4L19 9l-4-4L4 16v4Zm13.7-13.3 1.6-1.6a1.4 1.4 0 0 0 0-2l-1.4-1.4a1.4 1.4 0 0 0-2 0l-1.6 1.6 3.4 3.4Z"
+              fill="currentColor"
+            />
+          </svg>
+          {fileName ? (
+            <span className="edit-button-file" data-testid="file-name">
+              {fileName}
+            </span>
+          ) : (
+            <span className="edit-button-file">Edit</span>
+          )}
         </button>
-        <button
-          role="button"
-          aria-label="Next slide"
-          onClick={() => showSlide(currentIndex + 1)}
-        >
-          &gt;
-        </button>
+        <button onClick={onLoadFile}>Switch</button>
       </div>
-      <div className="load-new-file">
-        <button onClick={loadContactsFromFile}>Load a different qrdata.yaml</button>
-      </div>
+      {isQrDialogOpen && (
+        <QrContentsDialog
+          url={contacts[currentIndex]?.url}
+          onClose={() => setIsQrDialogOpen(false)}
+        />
+      )}
     </div>
   );
 }

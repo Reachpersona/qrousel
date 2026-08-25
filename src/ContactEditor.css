@@ -1,0 +1,83 @@
+.ContactEditor {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.editor-title {
+  font-size: 20px;
+}
+
+.editor-entries {
+  list-style: decimal;
+  padding-left: 24px;
+}
+
+.editor-entry {
+  border-top: 1px solid #ddd;
+  padding: 12px 0;
+}
+
+.editor-field {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.editor-field span {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.editor-field input,
+.editor-field textarea {
+  width: 100%;
+  font-family: monospace;
+  font-size: 14px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.editor-field input[aria-invalid='true'] {
+  border: 1px solid #c00;
+}
+
+.editor-entry-error {
+  color: #c00;
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.editor-entry-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid #ddd;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.editor-note,
+.editor-status {
+  font-size: 13px;
+  margin: 0;
+}
+
+.editor-status-ok {
+  color: #060;
+}
+
+.editor-status-error {
+  color: #c00;
+}
+
+.editor-empty {
+  color: #666;
+}
+

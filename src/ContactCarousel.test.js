@@ -1,9 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
-import * as fs from 'fs';
-import yaml from 'js-yaml';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import ContactCarousel from './ContactCarousel';
-import qrcodeData from './data/qrdata.js';
 
 jest.mock('qrcode', () => ({
   toDataURL: jest.fn(() => Promise.resolve('data:image/png;base64,mock-qr-code')),
@@ -16,110 +13,59 @@ if (typeof global.TextEncoder === 'undefined') {
   global.TextDecoder = TextDecoder;
 }
 
-// Mock both fs and window.showOpenFilePicker
-jest.mock('fs', () => ({
-  readFileSync: jest.fn(),
-  existsSync: jest.fn(),
-}));
-
-// Mock window.showOpenFilePicker
-const mockShowOpenFilePicker = jest.fn();
-global.window = Object.create(window);
-global.window.showOpenFilePicker = mockShowOpenFilePicker;
-
 describe('ContactCarousel', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockShowOpenFilePicker.mockReset();
-    global.window = Object.create(window);
-    global.window.showOpenFilePicker = mockShowOpenFilePicker;
-  });
-
-  // Helper function to mock file selection
-  const mockFileSelection = (data) => {
-    mockShowOpenFilePicker.mockResolvedValue([{ getFile: () => ({ text: () => Promise.resolve(yaml.dump(data)) }) }]);
+  const renderWithContacts = async (data, props = {}) => {
+    await act(async () => {
+      render(
+        <ContactCarousel contacts={data} onLoadFile={() => {}} onEdit={() => {}} {...props} />
+      );
+    });
+    await screen.findByText(data[0].description);
   };
 
-/*
-  it('displays an error message when the file system access API is not supported', async () => {
-    delete global.window.showOpenFilePicker;
-
-    render(<ContactCarousel />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Error: File System Access API is not supported in this browser.')).toBeInTheDocument();
-    });
-  });
-
-  it('displays an error message when file loading fails', async () => {
-    mockShowOpenFilePicker.mockRejectedValue(new Error('Failed to load file'));
-
+  // One act() per click: batching several clicks into a single act() makes every
+  // handler read the same stale currentIndex, so the component never passes
+  // through the intermediate slides.
+  const clickControl = async (name) => {
     await act(async () => {
-      render(<ContactCarousel />);
+      fireEvent.click(screen.getByRole('button', { name }));
     });
+  };
 
-    const selectFileButton = screen.getByRole('button', { name: /Select qrdata.yaml/i });
-    await act(async () => {
-      fireEvent.click(selectFileButton);
-    });
+  const clickNext = () => clickControl(/Next slide/i);
+  const clickPrevious = () => clickControl(/Previous slide/i);
 
-    await waitFor(() => {
-      expect(screen.getByText('Error: Failed to load file')).toBeInTheDocument();
+  // Assert the expected slide is showing and, just as importantly, that none of
+  // the other slides are.
+  const expectSlide = (data, index) => {
+    expect(screen.getByText(data[index].description)).toBeInTheDocument();
+    data.forEach((contact, i) => {
+      if (i !== index) {
+        expect(screen.queryByText(contact.description)).not.toBeInTheDocument();
+      }
     });
-  });
-*/
-
-  it('loads contacts from a selected file', async () => {
-    // Mock the file selection and file content
-    const mockContactsData = [
-      { url: 'https://example.com/test', description: 'Test Description' },
-    ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-    const selectFileButton = screen.getByRole('button', { name: /Select qrdata.yaml/i });
-    await act(async () => {
-      fireEvent.click(selectFileButton);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
-  });
+  };
 
   it('renders the first contact on initial render', async () => {
-    // Mock the file selection and file content
-    const mockContactsData = [
-      { url: 'https://example.com/test', description: 'Test Description' },
-    ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
-  });
-
-  it('displays the next contact when the "Next" button is clicked', async () => {
-    // Mock the file selection and file content
     const mockContactsData = [
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
     ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
+    await renderWithContacts(mockContactsData);
 
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
+    expectSlide(mockContactsData, 0);
+  });
 
-    await act(async () => {
-      fireEvent.click(nextButton);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
+  it('displays the next contact when the "Next" button is clicked', async () => {
+    const mockContactsData = [
+      { url: 'https://example.com/test1', description: 'Test Description 1' },
+      { url: 'https://example.com/test2', description: 'Test Description 2' },
+    ];
+    await renderWithContacts(mockContactsData);
+
+    await clickNext();
+
+    expectSlide(mockContactsData, 1);
   });
 
   it('displays the previous contact when the "Previous" button is clicked', async () => {
@@ -127,22 +73,14 @@ describe('ContactCarousel', () => {
       { url: 'https://example.com/test1', description: 'Test Description 1' },
       { url: 'https://example.com/test2', description: 'Test Description 2' },
     ];
-    mockFileSelection(mockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
+    await renderWithContacts(mockContactsData);
 
-    const prevButton = screen.getByRole('button', { name: /Previous slide/i });
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
+    await clickNext(); // Go to the second contact first
+    expectSlide(mockContactsData, 1);
 
-    await act(async () => {
-      fireEvent.click(nextButton); // Go to the second contact first
-      fireEvent.click(prevButton);
-    });
+    await clickPrevious();
 
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
+    expectSlide(mockContactsData, 0);
   });
 
   it('wraps around to the first contact from the last', async () => {
@@ -151,26 +89,18 @@ describe('ContactCarousel', () => {
       { url: 'https://example.com/test2', description: 'Test Description 2' },
       { url: 'https://example.com/test3', description: 'Test Description 3' },
     ];
-    mockFileSelection(longMockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
-    });
+    await renderWithContacts(longMockContactsData);
 
-    const nextButton = screen.getByRole('button', { name: /Next slide/i });
     // Navigate to the last contact
-    await act(async () => {
-      for (let i = 0; i < longMockContactsData.length - 1; i++) {
-	fireEvent.click(nextButton);
-      }
-    });
+    for (let i = 0; i < longMockContactsData.length - 1; i++) {
+      await clickNext();
+    }
+    expectSlide(longMockContactsData, longMockContactsData.length - 1);
 
     // Click next to wrap around
-    await act(async () => {
-      fireEvent.click(nextButton);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
-    });
+    await clickNext();
+
+    expectSlide(longMockContactsData, 0);
   });
 
   it('wraps around to the last contact from the first', async () => {
@@ -179,18 +109,170 @@ describe('ContactCarousel', () => {
       { url: 'https://example.com/test2', description: 'Test Description 2' },
       { url: 'https://example.com/test3', description: 'Test Description 3' },
     ];
-    mockFileSelection(longMockContactsData);
-    await act(async () => {
-      render(<ContactCarousel />);
+    await renderWithContacts(longMockContactsData);
+    expectSlide(longMockContactsData, 0);
+
+    await clickPrevious();
+
+    expectSlide(longMockContactsData, longMockContactsData.length - 1);
+  });
+  describe('QR contents popup', () => {
+    const TWO = [
+      { url: 'https://example.com/one', description: 'Test Description 1' },
+      { url: 'https://example.com/two', description: 'Test Description 2' },
+    ];
+
+    // Real browsers populate touches, changedTouches, and screen coordinates on
+    // every touch event; the carousel's swipe handler reads changedTouches.
+    const touch = (x, y) => [{ clientX: x, clientY: y, screenX: x, screenY: y }];
+    const touchEvent = (x, y) => ({ touches: touch(x, y), changedTouches: touch(x, y) });
+
+    const longPress = async (element) => {
+      fireEvent.touchStart(element, touchEvent(10, 10));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+      fireEvent.touchEnd(element, touchEvent(10, 10));
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers({ advanceTimers: true });
     });
 
-    const prevButton = screen.getByRole('button', { name: /Previous slide/i });
-    await act(async () => {
-      fireEvent.click(prevButton);
+    afterEach(() => {
+      jest.useRealTimers();
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Test Description')).toBeInTheDocument();
+    it('does not show the popup until the user asks for it', async () => {
+      await renderWithContacts(TWO);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('shows the current slide url when the qr code is clicked', async () => {
+      await renderWithContacts(TWO);
+
+      fireEvent.click(screen.getByAltText('QR Code'));
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('https://example.com/one')).toBeInTheDocument();
+    });
+
+    it('shows the url of the slide the user navigated to', async () => {
+      await renderWithContacts(TWO);
+      await clickNext();
+
+      fireEvent.click(screen.getByAltText('QR Code'));
+
+      expect(screen.getByText('https://example.com/two')).toBeInTheDocument();
+    });
+
+    it('opens the popup on a long press', async () => {
+      await renderWithContacts(TWO);
+
+      await longPress(screen.getByAltText('QR Code'));
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('does not open the popup on a quick tap', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+      fireEvent.touchEnd(qr, touchEvent(10, 10));
+      fireEvent.click(qr);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not open the popup when the press turns into a swipe', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      fireEvent.touchMove(qr, touchEvent(90, 12));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not cancel the press for a small finger wobble', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      fireEvent.touchMove(qr, touchEvent(13, 12));
+      await act(async () => {
+        jest.advanceTimersByTime(600);
+      });
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('opens on a mouse click once an earlier touch has settled', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      fireEvent.touchEnd(qr, touchEvent(10, 10));
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      fireEvent.click(qr);
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('closes the popup when the slide changes', async () => {
+      await renderWithContacts(TWO);
+      fireEvent.click(screen.getByAltText('QR Code'));
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      await clickNext();
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+  describe('file actions', () => {
+    const ONE = [{ url: 'https://example.com/one', description: 'Test Description 1' }];
+
+    it('shows the file name inside the edit button', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      const edit = screen.getByRole('button', { name: /^Edit qrdata\.yaml$/ });
+      expect(edit).toContainElement(screen.getByTestId('file-name'));
+      expect(screen.getByTestId('file-name')).toHaveTextContent('qrdata.yaml');
+    });
+
+    it('falls back to a plain Edit button when no file name is known', async () => {
+      await renderWithContacts(ONE);
+
+      expect(screen.getByRole('button', { name: /^Edit$/ })).toBeInTheDocument();
+      expect(screen.queryByTestId('file-name')).not.toBeInTheDocument();
+    });
+
+    it('labels the load control Switch', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      expect(screen.getByRole('button', { name: /^Switch$/ })).toBeInTheDocument();
+    });
+
+    it('keeps the file actions outside the centred content area', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      // The actions occupy their own band at the bottom. Putting them back
+      // inside the centred content would make the content centre around them.
+      const main = document.querySelector('.carousel-main');
+      const actions = document.querySelector('.file-actions');
+      expect(main).toContainElement(screen.getByAltText('QR Code'));
+      expect(actions).not.toBeNull();
+      expect(main).not.toContainElement(actions);
     });
   });
 });
