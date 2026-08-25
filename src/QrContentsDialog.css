@@ -1,0 +1,13 @@
+.qr-dialog-url {
+  /* URLs are long and arbitrary - never let one widen the dialog. */
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  font-family: monospace;
+  user-select: all;
+  margin: 12px 0;
+}
+
+.qr-dialog-note {
+  font-size: 13px;
+  color: #8a5b00;
+}

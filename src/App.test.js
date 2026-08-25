@@ -80,6 +80,16 @@ describe('App', () => {
     });
   };
 
+  // Saving over a file the app did not write asks for confirmation the first
+  // time. Tests about save mechanics go through it; the warning has its own
+  // tests below.
+  const saveInPlace = async () => {
+    await click(/^Save$/);
+    if (screen.queryByRole('button', { name: /Save anyway/i })) {
+      await click(/Save anyway/i);
+    }
+  };
+
   const loadFile = async (handle = makeHandle('qrdata.yaml')) => {
     openPicker.mockResolvedValue([handle]);
     await renderApp();
@@ -220,7 +230,7 @@ describe('App', () => {
       await click(/^Edit\b/);
       await type('QR contents for entry 1', 'mailto:someone@example.com');
 
-      await click(/^Save$/);
+      await saveInPlace();
 
       expect(writes).toHaveLength(1);
       expect(yaml.load(writes[0].text)).toEqual([
@@ -233,7 +243,7 @@ describe('App', () => {
       await loadFile();
       await click(/^Edit\b/);
       await type('Description for entry 1', 'Saved description');
-      await click(/^Save$/);
+      await saveInPlace();
 
       await click(/^Done$/);
 
@@ -244,7 +254,7 @@ describe('App', () => {
       const handle = await loadFile(makeHandle('qrdata.yaml', { permission: 'prompt' }));
       await click(/^Edit\b/);
 
-      await click(/^Save$/);
+      await saveInPlace();
 
       expect(handle.requestPermission).toHaveBeenCalledWith({ mode: 'readwrite' });
       expect(writes).toHaveLength(1);
@@ -257,7 +267,7 @@ describe('App', () => {
       await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
 
-      await click(/^Save$/);
+      await saveInPlace();
 
       expect(writes).toHaveLength(0);
       expect(screen.getByText(/Permission to write the file was refused/)).toBeInTheDocument();
@@ -271,7 +281,7 @@ describe('App', () => {
       await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
 
-      await click(/^Save$/);
+      await saveInPlace();
 
       expect(localStorage.getItem('contactsData')).toBe(before);
       expect(screen.getByText(/Nothing was saved/)).toBeInTheDocument();
@@ -387,7 +397,7 @@ describe('App', () => {
       await loadFile();
       await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
-      await click(/^Save$/);
+      await saveInPlace();
 
       await click(/^Done$/);
 
@@ -400,7 +410,7 @@ describe('App', () => {
       await loadFile();
       await click(/^Edit\b/);
 
-      await click(/^Save$/);
+      await saveInPlace();
 
       await waitFor(() => expect(writes).toHaveLength(1));
       expect(yaml.load(writes[0].text)).toEqual(CONTACTS);
@@ -459,6 +469,82 @@ describe('App', () => {
       // The name describes data that has just been thrown away, so it must go
       // with it rather than linger and attach itself to whatever loads next.
       expect(localStorage.getItem('contactsFileName')).toBeNull();
+    });
+  });
+  describe('overwrite warning', () => {
+    const startEditing = async () => {
+      await loadFile();
+      await click(/^Edit\b/);
+      await type('Description for entry 1', 'Edited');
+    };
+
+    it('warns before the first in-place save of a file it did not write', async () => {
+      await startEditing();
+
+      await click(/^Save$/);
+
+      expect(screen.getByRole('dialog', { name: /overwrite/i })).toBeInTheDocument();
+      expect(screen.getByText(/comments/i)).toBeInTheDocument();
+      // The warning must be a question, not a notification after the fact.
+      expect(writes).toHaveLength(0);
+    });
+
+    it('writes when the overwrite is confirmed', async () => {
+      await startEditing();
+      await click(/^Save$/);
+
+      await click(/Save anyway/i);
+
+      expect(writes).toHaveLength(1);
+      expect(screen.queryByRole('dialog', { name: /overwrite/i })).not.toBeInTheDocument();
+    });
+
+    it('does not write in place when Save As is chosen instead', async () => {
+      savePicker.mockResolvedValue(makeHandle('copy.yaml'));
+      await startEditing();
+      await click(/^Save$/);
+
+      await click(/Save As instead/i);
+
+      expect(writes).toHaveLength(1);
+      expect(writes[0].name).toBe('copy.yaml');
+    });
+
+    it('does not write when the warning is dismissed', async () => {
+      await startEditing();
+      await click(/^Save$/);
+
+      await click(/^Cancel$/);
+
+      expect(writes).toHaveLength(0);
+      // The edits must survive a dismissed warning.
+      expect(screen.getByLabelText('Description for entry 1')).toHaveValue('Edited');
+    });
+
+    it('warns only once for the same file', async () => {
+      await startEditing();
+      await click(/^Save$/);
+      await click(/Save anyway/i);
+
+      await type('Description for entry 1', 'Edited again');
+      await click(/^Save$/);
+
+      expect(screen.queryByRole('dialog', { name: /overwrite/i })).not.toBeInTheDocument();
+      expect(writes).toHaveLength(2);
+    });
+
+    it('does not warn for a file it wrote itself', async () => {
+      savePicker.mockResolvedValue(makeHandle('new.yaml'));
+      await renderApp();
+      await click(/Create a new qrdata\.yaml/i);
+      await type('QR contents for entry 1', 'https://example.com/new');
+      await click(/Save As/);
+
+      await type('Description for entry 1', 'Edited');
+      await click(/^Save$/);
+
+      expect(screen.queryByRole('dialog', { name: /overwrite/i })).not.toBeInTheDocument();
+      expect(writes).toHaveLength(2);
     });
   });
 });

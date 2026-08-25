@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import useContactsFile from './useContactsFile';
+import useContactsFile, { findInvalidEntries } from './useContactsFile';
 import ContactCarousel from './ContactCarousel';
 import ContactEditor from './ContactEditor';
+import OverwriteWarning from './OverwriteWarning';
 
 const NO_HANDLE_REASON =
   'Save As is the only way to write this file. Either it has not been saved yet, or the link to it was lost when the page reloaded.';
@@ -15,7 +16,7 @@ const SAVE_FAILURE_MESSAGES = {
 };
 
 function App() {
-  const { contacts, error, fileName, canSaveInPlace, load, save, saveAs, clearError } =
+  const { contacts, error, fileName, canSaveInPlace, isForeignFile, load, save, saveAs, clearError } =
     useContactsFile();
 
   const [mode, setMode] = useState('view');
@@ -23,6 +24,7 @@ function App() {
   const [invalid, setInvalid] = useState([]);
   const [status, setStatus] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [isOverwriteWarningOpen, setIsOverwriteWarningOpen] = useState(false);
 
   // Warn before the tab closes on unsaved edits.
   useEffect(() => {
@@ -68,8 +70,33 @@ function App() {
     });
   };
 
-  const handleSave = async () => applyResult(await save(draft));
-  const handleSaveAs = async () => applyResult(await saveAs(draft));
+  const writeInPlace = async () => {
+    setIsOverwriteWarningOpen(false);
+    applyResult(await save(draft));
+  };
+
+  const handleSave = async () => {
+    // Reject unusable entries before asking about anything else: there is no
+    // point warning about overwriting a file with data that will not be
+    // written either way.
+    const invalidEntries = findInvalidEntries(draft);
+    if (invalidEntries.length > 0) {
+      applyResult({ ok: false, reason: 'invalid', invalid: invalidEntries });
+      return;
+    }
+    // Rewriting someone else's file discards their comments, so ask first -
+    // once per file, not on every save.
+    if (isForeignFile) {
+      setIsOverwriteWarningOpen(true);
+      return;
+    }
+    await writeInPlace();
+  };
+
+  const handleSaveAs = async () => {
+    setIsOverwriteWarningOpen(false);
+    applyResult(await saveAs(draft));
+  };
 
   const confirmDiscard = useCallback(() => {
     if (!isDirty) return true;
@@ -90,17 +117,27 @@ function App() {
 
   if (mode === 'edit') {
     return (
-      <ContactEditor
-        entries={draft}
-        invalid={invalid}
-        status={status}
-        canSaveInPlace={canSaveInPlace}
-        saveDisabledReason={NO_HANDLE_REASON}
-        onChange={handleChange}
-        onSave={handleSave}
-        onSaveAs={handleSaveAs}
-        onDone={handleDone}
-      />
+      <>
+        <ContactEditor
+          entries={draft}
+          invalid={invalid}
+          status={status}
+          canSaveInPlace={canSaveInPlace}
+          saveDisabledReason={NO_HANDLE_REASON}
+          onChange={handleChange}
+          onSave={handleSave}
+          onSaveAs={handleSaveAs}
+          onDone={handleDone}
+        />
+        {isOverwriteWarningOpen && (
+          <OverwriteWarning
+            fileName={fileName}
+            onConfirm={writeInPlace}
+            onSaveAs={handleSaveAs}
+            onCancel={() => setIsOverwriteWarningOpen(false)}
+          />
+        )}
+      </>
     );
   }
 

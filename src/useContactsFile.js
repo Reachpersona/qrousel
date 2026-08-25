@@ -51,6 +51,9 @@ export default function useContactsFile() {
   const [error, setError] = useState(null);
   const [fileName, setFileName] = useState(null);
   const [canSaveInPlace, setCanSaveInPlace] = useState(false);
+  // True while the remembered file was written by someone else, so rewriting it
+  // would discard comments and formatting the app cannot reproduce.
+  const [isForeignFile, setIsForeignFile] = useState(false);
   // Held for the session only. A FileSystemFileHandle is not serializable, so
   // after a reload there is no link to the original file and Save As is the
   // only way to write.
@@ -97,6 +100,7 @@ export default function useContactsFile() {
       const parsed = yaml.load(await file.text());
 
       rememberFile(fileHandle, fileHandle.name || file.name);
+      setIsForeignFile(true);
       commit(parsed || []);
       setError(null);
       return { ok: true };
@@ -125,6 +129,7 @@ export default function useContactsFile() {
         if (permission !== 'granted') return { ok: false, reason: 'denied' };
 
         await writeEntries(fileHandle, entries);
+        setIsForeignFile(false);
         commit(entries);
         return { ok: true };
       } catch (e) {
@@ -153,6 +158,7 @@ export default function useContactsFile() {
 
         // Only adopt the new file once the write actually landed.
         rememberFile(fileHandle);
+        setIsForeignFile(false);
         commit(entries);
         return { ok: true };
       } catch (e) {
@@ -166,5 +172,15 @@ export default function useContactsFile() {
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { contacts, error, fileName, canSaveInPlace, load, save, saveAs, clearError };
+  return {
+    contacts,
+    error,
+    fileName,
+    canSaveInPlace,
+    isForeignFile,
+    load,
+    save,
+    saveAs,
+    clearError,
+  };
 }

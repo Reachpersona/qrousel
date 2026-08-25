@@ -263,6 +263,37 @@ describe('ContactCarousel', () => {
       expect(screen.getByRole('button', { name: /^Switch$/ })).toBeInTheDocument();
     });
 
+    it('does not show help until it is asked for', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      expect(screen.queryByRole('dialog', { name: /help/i })).not.toBeInTheDocument();
+    });
+
+    it('opens help from the actions band', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      fireEvent.click(screen.getByRole('button', { name: /^Help$/ }));
+
+      expect(screen.getByRole('dialog', { name: /help/i })).toBeInTheDocument();
+    });
+
+    it('warns in the help that saving drops comments', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+
+      fireEvent.click(screen.getByRole('button', { name: /^Help$/ }));
+
+      expect(screen.getByText('Saving drops comments')).toBeInTheDocument();
+    });
+
+    it('closes help on Escape', async () => {
+      await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
+      fireEvent.click(screen.getByRole('button', { name: /^Help$/ }));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(screen.queryByRole('dialog', { name: /help/i })).not.toBeInTheDocument();
+    });
+
     it('keeps the file actions outside the centred content area', async () => {
       await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
 
