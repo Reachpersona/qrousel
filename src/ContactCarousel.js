@@ -169,6 +169,16 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
     }, CLICK_AFTER_TOUCH_MS);
   };
 
+  // Chrome answers a long press on an image with its own menu - save image,
+  // open in new tab - drawn as browser chrome above anything the page renders.
+  // -webkit-touch-callout only stops that on iOS. Suppress it for touch only,
+  // so right-clicking on a desktop still offers Save image as.
+  const handleQrContextMenu = (e) => {
+    if (isTouchInteractionRef.current) {
+      e.preventDefault();
+    }
+  };
+
   const handleQrClick = () => {
     if (isTouchInteractionRef.current) return;
     setIsQrDialogOpen(true);
@@ -194,7 +204,9 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
               src={qrCodes[currentIndex] || '/placeholder.png'}
               alt="QR Code"
               className="qr-code"
+              draggable={false}
               onClick={handleQrClick}
+              onContextMenu={handleQrContextMenu}
               onTouchStart={handleQrTouchStart}
               onTouchMove={handleQrTouchMove}
               onTouchEnd={handleQrTouchEnd}

@@ -62,7 +62,11 @@
   cursor: pointer;
   /* Let the carousel own horizontal swipes; a long press still reaches us. */
   touch-action: pan-y;
+  /* Stops iOS raising its own save-image callout on a long press. Chrome
+     ignores this and needs the contextmenu handler instead. */
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 

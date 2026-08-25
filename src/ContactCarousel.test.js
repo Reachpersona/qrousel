@@ -230,6 +230,28 @@ describe('ContactCarousel', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
+    it('suppresses the browser image menu during a long press', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      fireEvent.touchStart(qr, touchEvent(10, 10));
+      // Chrome ignores -webkit-touch-callout and raises contextmenu instead;
+      // its menu is browser chrome and would sit above our dialog.
+      const notPrevented = fireEvent.contextMenu(qr);
+
+      expect(notPrevented).toBe(false);
+    });
+
+    it('leaves the right-click menu alone when there was no touch', async () => {
+      await renderWithContacts(TWO);
+      const qr = screen.getByAltText('QR Code');
+
+      const notPrevented = fireEvent.contextMenu(qr);
+
+      // Desktop right-click must still offer Save image as.
+      expect(notPrevented).toBe(true);
+    });
+
     it('closes the popup when the slide changes', async () => {
       await renderWithContacts(TWO);
       fireEvent.click(screen.getByAltText('QR Code'));
