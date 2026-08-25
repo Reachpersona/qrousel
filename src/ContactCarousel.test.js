@@ -239,40 +239,40 @@ describe('ContactCarousel', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
-  describe('file name', () => {
+  describe('file actions', () => {
     const ONE = [{ url: 'https://example.com/one', description: 'Test Description 1' }];
 
-    it('shows the name of the loaded file', async () => {
+    it('shows the file name inside the edit button', async () => {
       await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
 
+      const edit = screen.getByRole('button', { name: /^Edit qrdata\.yaml$/ });
+      expect(edit).toContainElement(screen.getByTestId('file-name'));
       expect(screen.getByTestId('file-name')).toHaveTextContent('qrdata.yaml');
     });
 
-    it('shows nothing when no file name is known', async () => {
+    it('falls back to a plain Edit button when no file name is known', async () => {
       await renderWithContacts(ONE);
 
+      expect(screen.getByRole('button', { name: /^Edit$/ })).toBeInTheDocument();
       expect(screen.queryByTestId('file-name')).not.toBeInTheDocument();
     });
 
-    it('keeps the file name outside the centred content area', async () => {
+    it('labels the load control Switch', async () => {
       await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
 
-      // The content is centred inside .carousel-main; the file name sits after
-      // it. Making the file name a flex sibling of the content and pushing it
-      // down with margin-top:auto instead would absorb all the free space and
-      // defeat the centring, packing the content against the top of the page.
-      const main = document.querySelector('.carousel-main');
-      expect(main).toContainElement(screen.getByAltText('QR Code'));
-      expect(main).not.toContainElement(screen.getByTestId('file-name'));
+      expect(screen.getByRole('button', { name: /^Switch$/ })).toBeInTheDocument();
     });
 
-    it('keeps the file name out of the button group', async () => {
+    it('keeps the file actions outside the centred content area', async () => {
       await renderWithContacts(ONE, { fileName: 'qrdata.yaml' });
 
-      // It belongs to the page, not to the Edit/Load controls - nesting it
-      // there is what left it hugging the left edge.
-      const buttonGroup = document.querySelector('.load-new-file');
-      expect(buttonGroup).not.toContainElement(screen.getByTestId('file-name'));
+      // The actions occupy their own band at the bottom. Putting them back
+      // inside the centred content would make the content centre around them.
+      const main = document.querySelector('.carousel-main');
+      const actions = document.querySelector('.file-actions');
+      expect(main).toContainElement(screen.getByAltText('QR Code'));
+      expect(actions).not.toBeNull();
+      expect(main).not.toContainElement(actions);
     });
   });
 });

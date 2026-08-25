@@ -145,7 +145,7 @@ describe('App', () => {
     it('opens the editor on the loaded entries', async () => {
       await loadFile();
 
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       expect(screen.getByLabelText('QR contents for entry 1')).toHaveValue(
         'https://example.com/one'
@@ -163,7 +163,7 @@ describe('App', () => {
 
     it('adds and deletes entries', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       await click(/\+ Add entry/);
       expect(screen.getByLabelText('QR contents for entry 3')).toBeInTheDocument();
@@ -174,7 +174,7 @@ describe('App', () => {
 
     it('reorders entries', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       await click(/Move entry 2 up/);
 
@@ -185,7 +185,7 @@ describe('App', () => {
 
     it('does not reorder past the ends of the list', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       expect(screen.getByRole('button', { name: /Move entry 1 up/ })).toBeDisabled();
       expect(screen.getByRole('button', { name: /Move entry 2 down/ })).toBeDisabled();
@@ -193,7 +193,7 @@ describe('App', () => {
 
     it('does not change what the viewer shows until the edits are saved', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited but unsaved');
 
       await click(/^Done$/);
@@ -206,7 +206,7 @@ describe('App', () => {
   describe('saving', () => {
     it('writes yaml back to the loaded file', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('QR contents for entry 1', 'mailto:someone@example.com');
 
       await click(/^Save$/);
@@ -220,7 +220,7 @@ describe('App', () => {
 
     it('shows the saved entries in the viewer afterwards', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('Description for entry 1', 'Saved description');
       await click(/^Save$/);
 
@@ -231,7 +231,7 @@ describe('App', () => {
 
     it('requests write permission before writing', async () => {
       const handle = await loadFile(makeHandle('qrdata.yaml', { permission: 'prompt' }));
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       await click(/^Save$/);
 
@@ -243,7 +243,7 @@ describe('App', () => {
       await loadFile(
         makeHandle('qrdata.yaml', { permission: 'prompt', grantOnRequest: false })
       );
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
 
       await click(/^Save$/);
@@ -257,7 +257,7 @@ describe('App', () => {
     it('does not persist to localStorage when the write fails', async () => {
       await loadFile(makeHandle('qrdata.yaml', { failWrite: true }));
       const before = localStorage.getItem('contactsData');
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
 
       await click(/^Save$/);
@@ -268,7 +268,7 @@ describe('App', () => {
 
     it('does not write an entry with no payload', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('QR contents for entry 1', '   ');
 
       await click(/^Save$/);
@@ -343,7 +343,7 @@ describe('App', () => {
   describe('unsaved changes', () => {
     it('asks before discarding edits', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
 
       await click(/^Done$/);
@@ -354,7 +354,7 @@ describe('App', () => {
     it('stays in the editor when the discard is declined', async () => {
       window.confirm.mockReturnValue(false);
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
 
       await click(/^Done$/);
@@ -365,7 +365,7 @@ describe('App', () => {
 
     it('does not ask when nothing was edited', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       await click(/^Done$/);
 
@@ -374,7 +374,7 @@ describe('App', () => {
 
     it('does not ask after a successful save', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
       await type('Description for entry 1', 'Edited');
       await click(/^Save$/);
 
@@ -387,7 +387,7 @@ describe('App', () => {
   describe('round trip', () => {
     it('leaves an unmodified file byte-identical in structure', async () => {
       await loadFile();
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       await click(/^Save$/);
 
@@ -415,7 +415,7 @@ describe('App', () => {
       await loadFile();
       await reload();
 
-      await click(/^Edit$/);
+      await click(/^Edit\b/);
 
       expect(screen.queryByRole('button', { name: /^Save$/ })).not.toBeInTheDocument();
       expect(screen.getByText(/Save As is the only way to write this file/)).toBeInTheDocument();

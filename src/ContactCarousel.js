@@ -219,21 +219,34 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
             &gt;
           </button>
         </div>
-        <div className="load-new-file">
-          <button onClick={onEdit}>Edit</button>
-          <button onClick={onLoadFile}>Load a different qrdata.yaml</button>
-        </div>
+      </div>
+      <div className="file-actions">
+        <button
+          className="edit-button"
+          aria-label={fileName ? `Edit ${fileName}` : 'Edit'}
+          onClick={onEdit}
+        >
+          <svg className="pencil-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M4 20h4L19 9l-4-4L4 16v4Zm13.7-13.3 1.6-1.6a1.4 1.4 0 0 0 0-2l-1.4-1.4a1.4 1.4 0 0 0-2 0l-1.6 1.6 3.4 3.4Z"
+              fill="currentColor"
+            />
+          </svg>
+          {fileName ? (
+            <span className="edit-button-file" data-testid="file-name">
+              {fileName}
+            </span>
+          ) : (
+            <span className="edit-button-file">Edit</span>
+          )}
+        </button>
+        <button onClick={onLoadFile}>Switch</button>
       </div>
       {isQrDialogOpen && (
         <QrContentsDialog
           url={contacts[currentIndex]?.url}
           onClose={() => setIsQrDialogOpen(false)}
         />
-      )}
-      {fileName && (
-        <p className="file-name" data-testid="file-name">
-          {fileName}
-        </p>
       )}
     </div>
   );

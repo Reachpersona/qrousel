@@ -124,11 +124,11 @@
   color: #8a5b00;
 }
 
-/* The content takes all the space left over and centres itself inside it, so
-   the file name below can sit at the bottom of the page without affecting it.
-   Pushing the file name down with margin-top:auto instead does not work: auto
-   margins absorb the free space before justify-content is applied, which
-   silently defeats the centring and packs the content against the top. */
+/* The bottom quarter of the screen belongs to the file actions; the content
+   takes the rest and centres itself inside it. Pushing the actions down with
+   margin-top:auto instead does not work: auto margins absorb the free space
+   before justify-content is applied, which silently defeats the centring and
+   packs the content against the top. */
 .carousel-main {
   flex: 1;
   min-height: 0;
@@ -139,13 +139,41 @@
   justify-content: center;
 }
 
-.file-name {
+.file-actions {
+  height: 25vh;
   flex-shrink: 0;
   width: 100%;
-  margin: 0;
-  padding: 8px 0;
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.file-actions button {
+  padding: 10px 16px;
+  font-size: 15px;
+}
+
+.edit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* A long file name must not push Switch off the screen. */
+  max-width: 70%;
+}
+
+.pencil-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.edit-button-file {
   font-family: monospace;
-  font-size: 13px;
-  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
