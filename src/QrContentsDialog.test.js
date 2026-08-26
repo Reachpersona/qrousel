@@ -51,6 +51,8 @@ describe('QrContentsDialog', () => {
     expect(open).toHaveBeenCalledWith('https://example.com/a', '_blank', 'noopener,noreferrer');
   });
 
+  const ACTION_BUTTON = /^(Open|Call|Email|Text)/;
+
   describe('what it will open', () => {
     let open;
     let linkClicks;
@@ -78,7 +80,6 @@ describe('QrContentsDialog', () => {
       ['tel:+15551234567', /^Call$/],
       ['mailto:sales@example.com?subject=Quote', /^Email$/],
       ['sms:+15551234567?body=Hi', /^Text$/],
-      ['geo:12.9716,77.5946', /^Show on map$/],
     ])('offers to act on %s', (url, label) => {
       render(<QrContentsDialog url={url} onClose={() => {}} />);
 
@@ -92,7 +93,6 @@ describe('QrContentsDialog', () => {
       ['tel:+15551234567', /^Call$/],
       ['mailto:sales@example.com', /^Email$/],
       ['sms:+15551234567?body=Hi', /^Text$/],
-      ['geo:12.9716,77.5946', /^Show on map$/],
     ])('hands %s to the device rather than a new tab', async (url, label) => {
       render(<QrContentsDialog url={url} onClose={() => {}} />);
 
@@ -132,7 +132,7 @@ describe('QrContentsDialog', () => {
     ])('refuses to open %s', (url) => {
       render(<QrContentsDialog url={url} onClose={() => {}} />);
 
-      expect(screen.queryByRole('button', { name: /^(Open|Call|Email|Text|Show on map)/ })).not
+      expect(screen.queryByRole('button', { name: ACTION_BUTTON })).not
         .toBeInTheDocument();
       expect(screen.getByText(/shown as text only/i)).toBeInTheDocument();
       expect(open).not.toHaveBeenCalled();
@@ -148,16 +148,37 @@ describe('QrContentsDialog', () => {
       (url) => {
         render(<QrContentsDialog url={url} onClose={() => {}} />);
 
-        expect(screen.queryByRole('button', { name: /^(Open|Call|Email|Text|Show on map)/ })).not
+        expect(screen.queryByRole('button', { name: ACTION_BUTTON })).not
           .toBeInTheDocument();
         expect(open).not.toHaveBeenCalled();
       }
     );
 
+    // geo: is handled on Android and not on iOS, and there is no way to ask the
+    // device which it is. A button that silently does nothing on every iPhone
+    // is worse than no button: https://maps.google.com/?q=lat,lon is a plain
+    // web address that works everywhere.
+    it('offers no button for a geo: location', () => {
+      render(<QrContentsDialog url="geo:12.9716,77.5946" onClose={() => {}} />);
+
+      expect(screen.queryByRole('button', { name: ACTION_BUTTON })).not.toBeInTheDocument();
+      expect(screen.getByText(/shown as text only/i)).toBeInTheDocument();
+      expect(open).not.toHaveBeenCalled();
+      expect(linkClicks).toEqual([]);
+    });
+
+    it('offers to open a map link written as a web address', () => {
+      render(
+        <QrContentsDialog url="https://maps.google.com/?q=12.9716,77.5946" onClose={() => {}} />
+      );
+
+      expect(screen.getByRole('button', { name: /^Open/ })).toBeInTheDocument();
+    });
+
     it('offers no button for plain text', () => {
       render(<QrContentsDialog url="just some notes" onClose={() => {}} />);
 
-      expect(screen.queryByRole('button', { name: /^(Open|Call|Email|Text|Show on map)/ })).not
+      expect(screen.queryByRole('button', { name: ACTION_BUTTON })).not
         .toBeInTheDocument();
     });
   });

@@ -16,13 +16,18 @@ const WEB_PROTOCOLS = ['http:', 'https:'];
 //
 // The label is the promise the button makes: "Open" tells someone nothing
 // about the dialer that is about to appear.
+//
+// geo: is deliberately absent. Android handles it, iOS does not, and there is
+// no way to ask the device which it is - the button would silently do nothing
+// on every iPhone. https://maps.google.com/?q=lat,lon is a plain web address
+// that already works everywhere, and the same is true of wa.me for WhatsApp:
+// where an https form of a deep link exists, it is the better payload.
 const OPEN_LABELS = new Map([
   ['http:', 'Open'],
   ['https:', 'Open'],
   ['tel:', 'Call'],
   ['mailto:', 'Email'],
   ['sms:', 'Text'],
-  ['geo:', 'Show on map'],
 ]);
 
 function protocolOf(url) {
@@ -104,8 +109,8 @@ function QrContentsDialog({ url, imageDataUrl, onClose }) {
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
-    // tel:, mailto:, sms: and geo: are handed to the operating system rather
-    // than loaded as a page. A new tab would be left blank, or torn down the
+    // tel:, mailto: and sms: are handed to the operating system rather than
+    // loaded as a page. A new tab would be left blank, or torn down the
     // instant the handler takes over, so these go through a link click - which
     // is also what keeps them out of the popup blocker.
     const link = document.createElement('a');
@@ -132,8 +137,8 @@ function QrContentsDialog({ url, imageDataUrl, onClose }) {
           </button>
         ) : (
           <span className="qr-dialog-note">
-            Shown as text only. Web addresses, phone numbers, email, text messages, and map
-            locations can be opened - nothing else.
+            Shown as text only. Web addresses, phone numbers, email, and text messages can be
+            opened - nothing else.
           </span>
         )}
       </div>

@@ -58,8 +58,8 @@ function HelpDialog({ onClose }) {
         <dd>
           Click a code to read the text hidden inside it. On a phone, press and hold it
           instead. If the code holds something your phone can act on - a web address, a phone
-          number, an email, a text message, or a map location - you also get a button to do
-          it. Anything else is shown as text you can copy.
+          number, an email, or a text message - you also get a button to do it. Anything else
+          is shown as text you can copy.
         </dd>
 
         <dt>Move between codes</dt>
