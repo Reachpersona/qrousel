@@ -27,6 +27,7 @@ Create React App SPA. No router, no state library, no backend. `src/index.js` re
 ```
 App.js                  owns mode ('view' | 'edit') and the in-progress draft
 ├── useContactsFile.js  committed contacts, file handle, load/save, localStorage
+│   └── fileFallback.js       file input + download, for browsers with no FSA
 ├── ContactCarousel.js  viewer: QR generation, navigation, gestures
 │   ├── QrContentsDialog.js   reveal-the-contents popup
 │   ├── HelpDialog.js
@@ -37,7 +38,11 @@ App.js                  owns mode ('view' | 'edit') and the in-progress draft
 
 `Modal.js` supplies backdrop, heading, Escape, and backdrop-click for all three dialogs.
 
-**Data flow is runtime-only.** Nothing bundles contact data. `useContactsFile` hydrates from `localStorage.contactsData` on mount and otherwise loads a file through `window.showOpenFilePicker`. A deployed instance is empty until the user picks a file.
+**Data flow is runtime-only.** Nothing bundles contact data. `useContactsFile` hydrates from `localStorage.contactsData` on mount and otherwise loads a file the user picks. A deployed instance is empty until they do.
+
+**Two ways in and out, chosen by capability.** `isFileSystemAccessSupported()` requires *both* pickers, and every branch is decided by calling it - never by module-load detection, so tests can delete `window.showOpenFilePicker` and get the other path. With the API: `showOpenFilePicker`/`showSaveFilePicker`, a `FileSystemFileHandle`, and in-place `Save`. Without it (Firefox, Safari): `fileFallback.js` supplies a `<input type="file">` to read with and an `<a download>` to write with. Neither yields a handle, so `canSaveInPlace` stays false and `Save` is never rendered - `App` swaps in a different `saveDisabledReason`, because "the link to the file was lost" is not why.
+
+Consequences worth knowing before touching this: a dismissed file input resolves `null` and returns `{reason:'cancelled'}`, which must leave *every* piece of state alone; a download reports nothing back, so `saveAs` returns `{ok:true, via:'download'}` and the status must not say "Saved."; the name the app asked the browser to use is adopted as `fileName`, which is a guess if the user renamed it in the download dialog. `readFileText` goes through `FileReader` rather than `Blob.text()` - Safari lacks the latter before 14, and jsdom lacks it entirely, so tests read real bytes.
 
 Each entry is `{ url, description }`. `url` is any QR payload, not just a web address - `mailto:`, `tel:`, `WIFI:S=...;`, plain text - so the only validation is that it is non-empty. It becomes a PNG data URL via `qrcode` at 1024px (`QR_PIXEL_SIZE`); `description` becomes HTML via `marked`, injected with `dangerouslySetInnerHTML` and **not sanitized**.
 
@@ -64,7 +69,9 @@ Effects in `ContactCarousel.js`, in order - changing one usually means checking 
 
 ## Tests
 
-Seven suites, ~117 tests. Loading, saving, permissions, and unsaved-change guards live in `App.test.js` against the real component; the carousel suite covers viewing, navigation, gestures, and the actions band. File pickers, `createWritable`, and the permission methods are faked; `js-yaml` is used for real so serialization is genuinely exercised.
+Eight suites, ~142 tests. Loading, saving, permissions, and unsaved-change guards live in `App.test.js` against the real component; the carousel suite covers viewing, navigation, gestures, and the actions band. File pickers, `createWritable`, and the permission methods are faked; `js-yaml` is used for real so serialization is genuinely exercised. The fallback path is *not* faked at the module boundary - `App.test.js` deletes both pickers and drives the real `<input>` and `<a download>`, stubbing only `URL.createObjectURL` (jsdom has none) and `HTMLAnchorElement.click`.
+
+Two async traps specific to the fallback: `FileReader` settles *after* `act()` has flushed, so an assertion on state that came from a file read needs `waitFor`/`findBy`, not a bare `getBy`. And `git checkout --` cannot restore an untracked file - during mutation testing of a *new* module, a crashed run leaves the mutation in place and every later result is a lie. Restore from a copy.
 
 Every guard is expected to be **mutation-checked**: break the guard, confirm exactly the test that covers it fails. Two real gaps in this codebase were found that way and by nothing else - a handle adopted before its write landed, and a mock that had never returned a value.
 
