@@ -281,6 +281,17 @@ describe('ContactCarousel', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
+  it('does not pin the description to a reserved height', async () => {
+    await renderWithContacts([
+      { url: 'https://example.com/one', description: 'Test Description 1' },
+    ]);
+
+    // The description takes whatever space is left over. A reserved min-height
+    // would win over that and push the controls off a small screen, which is
+    // the whole reason the reservation was removed.
+    expect(screen.getByTestId('description').style.minHeight).toBe('');
+  });
+
   it('generates QR codes large enough to survive being scaled up', async () => {
     await renderWithContacts([
       { url: 'https://example.com/one', description: 'Test Description 1' },

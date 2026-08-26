@@ -16,12 +16,10 @@ const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
 // click on a hybrid device is not swallowed.
 const CLICK_AFTER_TOUCH_MS = 600;
 const QR_PIXEL_SIZE = 1024;
-
 function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [qrCodes, setQrCodes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [descriptionHtml, setDescriptionHtml] = useState(null);
-  const [descriptionHeight, setDescriptionHeight] = useState(0);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const carouselRef = useRef(null);
@@ -52,25 +50,6 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
 
     generateQRCodes();
   }, [contacts]);
-
-  useEffect(() => {
-    if (qrCodes.length > 0) {
-      let maxHeight = 0;
-      contacts.forEach((contact) => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = marked.parse(contact.description || '');
-        if (typeof window !== 'undefined' && document) {
-          document.body.appendChild(tempDiv);
-          maxHeight = Math.max(maxHeight, tempDiv.offsetHeight);
-          document.body.removeChild(tempDiv);
-        }
-        else {
-          maxHeight = 200; // set a default height for node
-        }
-      });
-      setDescriptionHeight(maxHeight);
-    }
-  }, [qrCodes, contacts]);
 
   useEffect(() => {
     setDescriptionHtml(null);
@@ -215,7 +194,6 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
             <div
               data-testid="description"
               className="description"
-              style={{ minHeight: `${descriptionHeight}px` }}
               dangerouslySetInnerHTML={{
                 __html: descriptionHtml || 'Loading description...',
               }}
