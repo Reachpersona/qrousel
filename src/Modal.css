@@ -16,8 +16,11 @@
   padding: 16px;
   width: 100%;
   max-width: 420px;
-  /* Must stay usable on a short portrait screen. */
+  /* Must stay usable on a short portrait screen. dvh discounts the browser's
+     own chrome, which vh does not - the help panel is long enough that the
+     difference is the last footnote being reachable or not. */
   max-height: 85vh;
+  max-height: 85dvh;
   overflow-y: auto;
   box-sizing: border-box;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
