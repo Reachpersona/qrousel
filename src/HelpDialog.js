@@ -1,6 +1,10 @@
 import React from 'react';
 import Modal from './Modal';
+import { isFileSystemAccessSupported } from './fileFallback';
 import './HelpDialog.css';
+
+const NEEDS_FILE_ACCESS = '*';
+const WORKS_DIFFERENTLY = '†';
 
 /**
  * Which deployment is being viewed. The app is served from more than one host
@@ -11,8 +15,18 @@ export function appAddress(location) {
   return `${location.host}${location.pathname || '/'}`;
 }
 
+function Mark({ children }) {
+  return <sup className="help-mark">{children}</sup>;
+}
+
 function HelpDialog({ onClose }) {
   const address = appAddress(typeof window === 'undefined' ? null : window.location);
+  // Two of the entries below behave differently depending on the browser. The
+  // reader should not have to work out which case they are in, so the help
+  // answers that first and then highlights the footnote that applies to them.
+  const canWriteToFiles = isFileSystemAccessSupported();
+
+  const legendClass = (applies) => `help-legend-item${applies ? ' help-legend-applies' : ''}`;
 
   return (
     <Modal title="Help" onClose={onClose} testId="help-dialog">
@@ -21,38 +35,81 @@ function HelpDialog({ onClose }) {
           Installed from <span className="help-address-value">{address}</span>
         </p>
       )}
-      <p className="help-note">Opening and saving files needs Chrome or Edge.</p>
+
+      <p className="help-note" data-testid="help-browser">
+        {canWriteToFiles ? (
+          <>
+            <strong>You are using Chrome or Edge.</strong> Everything below works, including
+            the parts marked <Mark>{NEEDS_FILE_ACCESS}</Mark>.
+          </>
+        ) : (
+          <>
+            <strong>You are using Firefox, Safari, or something similar.</strong> Your browser
+            will not let this app change a file on your computer, so it sends your changes to
+            your downloads instead. The part marked <Mark>{NEEDS_FILE_ACCESS}</Mark> is missing
+            for you, and the part marked <Mark>{WORKS_DIFFERENTLY}</Mark> works as described
+            below.
+          </>
+        )}
+      </p>
+
       <dl className="help">
-        <dt>See a QR code&rsquo;s contents</dt>
+        <dt>See what a code says</dt>
         <dd>
-          Click it, or press and hold on a touch screen. Only http and https links can be
-          opened.
+          Click a code to read the text hidden inside it. On a phone, press and hold it
+          instead. If the code holds a web address, you also get a button to open it.
         </dd>
 
         <dt>Move between codes</dt>
-        <dd>Use &lt; and &gt;, or swipe sideways.</dd>
+        <dd>Use the &lt; and &gt; buttons, or swipe left and right.</dd>
 
         <dt>Switch</dt>
-        <dd>Open a different qrdata.yaml.</dd>
+        <dd>Opens a different file of codes.</dd>
 
         <dt>Edit</dt>
         <dd>
-          Change, add, delete, and reorder entries. An entry can hold any QR payload, not just
-          a web address.
+          The pencil button, which shows the name of the file you are working on. Add, change,
+          delete, and reorder your codes. A code can hold anything - a web address, a phone
+          number, wifi details, or a plain note.
         </dd>
 
-        <dt>Save As</dt>
-        <dd>Recommended - writes a new file and leaves the original intact.</dd>
-
-        <dt>Save</dt>
+        <dt>
+          Save As <Mark>{WORKS_DIFFERENTLY}</Mark>
+        </dt>
         <dd>
-          Overwrites the currently loaded file. Entries are kept, but comments, blank lines,
-          and quoting style are lost, since the file is rewritten from scratch.
+          The safe choice. Writes your codes to a <em>new</em> file and leaves the file you
+          opened exactly as it was. The name it suggests ends in today&rsquo;s date and time,
+          so saving again never replaces an earlier version by accident.
         </dd>
 
-        <dt>After a page reload</dt>
-        <dd>Your entries are remembered, but the link to the file is not - use Save As.</dd>
+        <dt>
+          Save <Mark>{NEEDS_FILE_ACCESS}</Mark>
+        </dt>
+        <dd>
+          Replaces the file you opened with your changes. All of your codes are kept. Anything
+          else you had put in that file by hand is not: notes to yourself (lines starting with
+          #), blank lines, and quote marks are all rewritten. The app asks you first, the
+          first time.
+        </dd>
+
+        <dt>If you reload the page</dt>
+        <dd>
+          Your codes are still here, but the app no longer knows which file they came from, so
+          it cannot put them back into it. Use Save As to write them out again.
+        </dd>
       </dl>
+
+      <div className="help-legend">
+        <p className={legendClass(canWriteToFiles)} data-testid="legend-chrome">
+          <Mark>{NEEDS_FILE_ACCESS}</Mark> Chrome and Edge only. No other browser lets a web
+          page change a file on your computer.
+        </p>
+        <p className={legendClass(!canWriteToFiles)} data-testid="legend-others">
+          <Mark>{WORKS_DIFFERENTLY}</Mark> In Firefox, Safari, and other browsers, Save As
+          sends the file to your downloads instead of asking you where to put it. To replace
+          your original, move the downloaded file over it yourself.
+        </p>
+      </div>
     </Modal>
   );
 }

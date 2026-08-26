@@ -347,27 +347,30 @@ describe('ContactCarousel', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Help$/ }));
     };
 
+    // Terms carry a footnote mark, which is not part of the term itself.
     const helpTerms = () =>
-      Array.from(document.querySelectorAll('.help dt')).map((dt) => dt.textContent);
+      Array.from(document.querySelectorAll('.help dt')).map((dt) =>
+        dt.textContent.replace(/[*\u2020]/g, '').trim()
+      );
 
-    it('warns in the help that saving drops comments', async () => {
+    it('warns in the help that saving drops anything added by hand', async () => {
       await openHelp();
 
-      expect(
-        screen.getByText(/comments, blank lines, and quoting style are lost/i)
-      ).toBeInTheDocument();
+      const help = document.querySelector('.help');
+      expect(help).toHaveTextContent(/lines starting with #/i);
+      expect(help).toHaveTextContent(/blank lines, and quote marks are all rewritten/i);
     });
 
-    it('names Save As as the recommended way to write', async () => {
+    it('names Save As as the safe way to write', async () => {
       await openHelp();
 
-      expect(screen.getByText(/Recommended - writes a new file/i)).toBeInTheDocument();
+      expect(screen.getByText(/The safe choice/i)).toBeInTheDocument();
     });
 
-    it('states the browser requirement before the rest of the help', async () => {
+    it('states what this browser can do before the rest of the help', async () => {
       await openHelp();
 
-      const note = screen.getByText(/Chrome or Edge/i);
+      const note = screen.getByTestId('help-browser');
       const list = document.querySelector('.help');
       // eslint-disable-next-line no-bitwise
       expect(note.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

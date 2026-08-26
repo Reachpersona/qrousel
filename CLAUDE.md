@@ -10,7 +10,9 @@ npm run build                  # production build to ./build
 CI=true npm test               # run all tests once (non-watch)
 npm test                       # watch mode
 CI=true npm test -- -t "wraps around to the first contact from the last"   # single test by name
-CI=true npm test -- src/ContactCarouselNoFsAPI.test.js                     # single test file
+npm run build                  # MUST use npm run, not npx react-scripts build:
+                               # the npm scripts inject REACT_APP_VERSION/COMMIT/BUILD_TIME
+CI=true npm test -- src/App.test.js                                        # single test file
 npm run yaml-to-json           # ./data/qrdata.yaml -> src/data/qrdata.js
 node yaml-to-json.js ./data/qrdata-test.yaml   # convert a different YAML file
 npm run predeploy && npm run deploy            # build + push ./build to gh-pages branch
@@ -20,34 +22,58 @@ No linter script; ESLint runs via `react-app` config inside `react-scripts` duri
 
 ## Architecture
 
-Create React App SPA. The whole app is one component: `src/ContactCarousel.js`, mounted by `src/index.js`. There is no router, no state library, no backend.
+Create React App SPA. No router, no state library, no backend. `src/index.js` renders `src/App.js`.
 
-**Data flow is runtime-only.** The carousel never imports any bundled data. On mount it reads `localStorage.contactsData`; if absent it renders a "No contacts available" prompt with a button that calls `window.showOpenFilePicker` (File System Access API), parses the chosen YAML with `js-yaml`, sets state, and writes the parsed array back to `localStorage.contactsData`. Contact data therefore never ships in the build — a deployed instance is empty until the user picks a file.
+```
+App.js                  owns mode ('view' | 'edit') and the in-progress draft
+├── useContactsFile.js  committed contacts, file handle, load/save, localStorage
+│   └── fileFallback.js       file input + download, for browsers with no FSA
+├── ContactCarousel.js  viewer: QR generation, navigation, gestures
+│   ├── QrContentsDialog.js   reveal-the-contents popup
+│   ├── HelpDialog.js
+│   └── VersionFooter.js
+├── ContactEditor.js    presentational list editor
+└── OverwriteWarning.js
+```
 
-Each contact is `{ url, description }`. `url` → QR code PNG data URL via `qrcode`; `description` → HTML via `marked`, injected with `dangerouslySetInnerHTML`.
+`Modal.js` supplies backdrop, heading, Escape, and backdrop-click for all three dialogs.
 
-Effect chain in `ContactCarousel.js`, in order — changing one usually means checking the next:
-1. mount → hydrate `contacts` from localStorage (corrupt JSON clears the key and sets `error`)
-2. `contacts` → regenerate all `qrCodes` (failed QR falls back to `/placeholder.png`, which does not exist in `public/`)
-3. `qrCodes`/`contacts` → measure tallest rendered description by appending a temp div to `document.body`, store as `descriptionHeight` so slides don't jump
-4. `currentIndex`/`contacts` → re-render `descriptionHtml`
-5. `currentIndex`/`contacts` → (re)bind touchstart/touchend swipe handlers on `carouselRef`
+**Data flow is runtime-only.** Nothing bundles contact data. `useContactsFile` hydrates from `localStorage.contactsData` on mount and otherwise loads a file the user picks. A deployed instance is empty until they do.
 
-`showSlide` wraps at both ends. Three render branches: error, empty, carousel — the first two each expose their own "Select qrdata.yaml" button.
+**Two ways in and out, chosen by capability.** `isFileSystemAccessSupported()` requires *both* pickers, and every branch is decided by calling it - never by module-load detection, so tests can delete `window.showOpenFilePicker` and get the other path. With the API: `showOpenFilePicker`/`showSaveFilePicker`, a `FileSystemFileHandle`, and in-place `Save`. Without it (Firefox, Safari): `fileFallback.js` supplies a `<input type="file">` to read with and an `<a download>` to write with. Neither yields a handle, so `canSaveInPlace` stays false and `Save` is never rendered - `App` swaps in a different `saveDisabledReason`, because "the link to the file was lost" is not why.
 
-`src/QrContentsDialog.js` renders the reveal-the-QR-contents popup. It is a dumb component - it takes `{ url, onClose }` and owns nothing else; the carousel decides when it is open and closes it whenever `currentIndex` changes, so the dialog can never show a URL that disagrees with the QR code behind it. URLs come from a user-supplied YAML file and are untrusted: `isOpenable` allowlists `http:`/`https:`, and anything else renders as text with no Open button. `window.open` always gets `noopener,noreferrer`.
+Consequences worth knowing before touching this: a dismissed file input resolves `null` and returns `{reason:'cancelled'}`, which must leave *every* piece of state alone; a download reports nothing back, so `saveAs` returns `{ok:true, via:'download'}` and the status must not say "Saved."; the name the app asked the browser to use is adopted as `fileName`, which is a guess if the user renamed it in the download dialog. `readFileText` goes through `FileReader` rather than `Blob.text()` - Safari lacks the latter before 14, and jsdom lacks it entirely, so tests read real bytes.
 
-Gesture split on the QR image: a mouse click opens the dialog, but on touch only a 500ms press does. A tap must not open it, because the carousel swipes on touch and a swipe still emits a trailing `click`. `isTouchInteractionRef` suppresses that trailing click for 600ms after a touch sequence, which is also why a mouse click on a hybrid device still works once the touch has settled.
+Each entry is `{ url, description }`. `url` is any QR payload, not just a web address - `mailto:`, `tel:`, `WIFI:S=...;`, plain text - so the only validation is that it is non-empty. It becomes a PNG data URL via `qrcode` at 1024px (`QR_PIXEL_SIZE`); `description` becomes HTML via `marked`, injected with `dangerouslySetInnerHTML` and **not sanitized**.
 
-**Authoring.** `src/App.js` owns the mode (`view` / `edit`) and the in-progress draft; `src/useContactsFile.js` owns the *committed* contacts and the file handle. The hook deliberately exposes no `setContacts` - `save(draft)`/`saveAs(draft)` take the entries and commit them only after the write succeeds, so a denied permission or a failed write cannot leave half-saved data in localStorage. The `FileSystemFileHandle` is session-only (it is not serializable), so after a reload Save is not offered and Save As is the only way to write. Reading a file does not grant writing it: `save` upgrades via `queryPermission`/`requestPermission({ mode: 'readwrite' })`, and the Save click is the user gesture that prompt requires.
+**Ownership is split deliberately.** The hook holds what has been *saved*; `App` holds the draft. There is no `setContacts` - `save(draft)`/`saveAs(draft)` commit only after the write succeeds, so a denied permission or failed write cannot leave half-saved data in localStorage. Adopting a file (`rememberFile`) sets handle, `canSaveInPlace`, and name together, so partial adoption is impossible.
 
-**Legacy build-time path.** `yaml-to-json.js` + `src/data/qrdata.js` predate the runtime loader (commit 75d8134 "contact data needed only at runtime"). `qrdata.js` is now imported only by `ContactCarousel.test.js`, and even there it is unused. Treat it as test fixture / dead weight, not as the app's data source. `.gitignore` still lists the pre-rename `src/data/contacts.js`, so the generated `qrdata.js` is committed.
+The `FileSystemFileHandle` is session-only (not serializable), so after a reload Save is not offered and Save As is the only way to write; the *name* is persisted separately under `contactsFileName` so the UI can still say where the data came from. Reading a file does not grant writing it - `save` upgrades via `queryPermission`/`requestPermission({ mode: 'readwrite' })`, with the Save click as the required user gesture. The first in-place save of a file the app did not write raises `OverwriteWarning`, because `yaml.load`→`yaml.dump` silently drops comments, blank lines, and quoting style (extra keys survive).
+
+Effects in `ContactCarousel.js`, in order - changing one usually means checking the next:
+1. `contacts` → regenerate all `qrCodes` (a failure falls back to `/placeholder.png`, which does not exist in `public/`)
+2. `currentIndex`/`contacts` → re-render `descriptionHtml`
+3. `currentIndex`/`contacts` → (re)bind touchstart/touchend swipe handlers on `carouselRef`
+4. mount → cleanup for pending long-press timers
+5. `currentIndex` → close the QR dialog, so it can never show a URL that disagrees with the code behind it
+
+`showSlide` wraps at both ends. `App` has four render branches: editor, error, empty, carousel; error and empty both offer Select **and** Create-new, so neither is a dead end.
+
+**Untrusted input.** Payloads come from a user-supplied file. `QrContentsDialog.isOpenable` allowlists `http:`/`https:` - anything else renders as text with no Open button - and `window.open` always gets `noopener,noreferrer`. Long-press on the QR is suppressed for touch only (`handleQrContextMenu`), so Chrome's image menu cannot cover the dialog while desktop right-click still offers Save image as.
+
+**Gesture split on the QR image.** A mouse click opens the dialog; on touch only a 500ms press does. A tap must not open it, because the carousel swipes on touch and a swipe still emits a trailing `click`. `isTouchInteractionRef` suppresses that click for 600ms, which is also why a real mouse click on a hybrid device still works once the touch has settled.
+
+**Layout is height-constrained, not scrolling.** The root is `100dvh` (with `100vh` fallback) and `overflow: hidden`; `min-height: 0` at every flex level lets the QR shrink instead of overflowing. The description takes the leftover space and scrolls in place - deliberately *not* a reserved height, since a `min-height` overrides flex sizing and pushes controls off a short screen. Primary target is mobile portrait.
+
+**Legacy build-time path - dead.** `yaml-to-json.js` and `src/data/qrdata.js` predate the runtime loader (commit 75d8134). Nothing imports `qrdata.js` any more. Both are dead weight; deleting them is a pending cleanup. `.gitignore` still lists the pre-rename `src/data/contacts.js`, so the generated `qrdata.js` is committed.
 
 ## Tests
 
-`src/ContactCarousel.test.js` covers the happy paths; `src/ContactCarouselNoFsAPI.test.js` exists as a separate file because it destroys `global.window` to simulate a browser without the File System Access API, which cannot coexist with the other file's `window` mocking. Several error-path tests in `ContactCarousel.test.js` are commented out.
+Eight suites, ~142 tests. Loading, saving, permissions, and unsaved-change guards live in `App.test.js` against the real component; the carousel suite covers viewing, navigation, gestures, and the actions band. File pickers, `createWritable`, and the permission methods are faked; `js-yaml` is used for real so serialization is genuinely exercised. The fallback path is *not* faked at the module boundary - `App.test.js` deletes both pickers and drives the real `<input>` and `<a download>`, stubbing only `URL.createObjectURL` (jsdom has none) and `HTMLAnchorElement.click`.
 
-Both suites replace `global.window` wholesale in `beforeEach`/render — when adding tests, mock `window.showOpenFilePicker` the same way rather than assuming jsdom's window survives.
+Two async traps specific to the fallback: `FileReader` settles *after* `act()` has flushed, so an assertion on state that came from a file read needs `waitFor`/`findBy`, not a bare `getBy`. And `git checkout --` cannot restore an untracked file - during mutation testing of a *new* module, a crashed run leaves the mutation in place and every later result is a lie. Restore from a copy.
+
+Every guard is expected to be **mutation-checked**: break the guard, confirm exactly the test that covers it fails. Two real gaps in this codebase were found that way and by nothing else - a handle adopted before its write landed, and a mock that had never returned a value.
 
 Two traps this suite has already fallen into once — check both when adding tests:
 
