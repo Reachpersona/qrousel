@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useContactsFile, { findInvalidEntries } from './useContactsFile';
+import { isFileSystemAccessSupported } from './fileFallback';
 import ContactCarousel from './ContactCarousel';
 import ContactEditor from './ContactEditor';
 import OverwriteWarning from './OverwriteWarning';
@@ -8,12 +9,20 @@ import VersionFooter from './VersionFooter';
 const NO_HANDLE_REASON =
   'Save As is the only way to write this file. Either it has not been saved yet, or the link to it was lost when the page reloaded.';
 
+// In a browser without the File System Access API the reason is not that this
+// particular file was never adopted - no file ever can be - so saying so would
+// send the user looking for a fix that does not exist.
+const NO_FILE_ACCESS_REASON =
+  'This browser cannot write back to a file it opened. Save As is the only way to write, and it downloads a copy.';
+
+const DOWNLOADED_MESSAGE =
+  'Downloaded. This browser cannot write back to a file, so your entries went to your downloads folder.';
+
 const SAVE_FAILURE_MESSAGES = {
   invalid: 'Nothing was saved. Every entry needs something to encode.',
   denied:
     'Permission to write the file was refused, so nothing was saved. Your edits are still here - use Save As to write them somewhere else.',
   'no-handle': NO_HANDLE_REASON,
-  unsupported: 'This browser cannot save files. Your edits are still here.',
 };
 
 function App() {
@@ -60,7 +69,9 @@ function App() {
     if (result.ok) {
       setIsDirty(false);
       setInvalid([]);
-      setStatus({ tone: 'ok', message: 'Saved.' });
+      // A download is all that could be done here, and it cannot be confirmed;
+      // reporting it as a save would claim more than the app knows.
+      setStatus({ tone: 'ok', message: result.via === 'download' ? DOWNLOADED_MESSAGE : 'Saved.' });
       return;
     }
     if (result.reason === 'cancelled') return;
@@ -124,7 +135,9 @@ function App() {
           invalid={invalid}
           status={status}
           canSaveInPlace={canSaveInPlace}
-          saveDisabledReason={NO_HANDLE_REASON}
+          saveDisabledReason={
+            isFileSystemAccessSupported() ? NO_HANDLE_REASON : NO_FILE_ACCESS_REASON
+          }
           onChange={handleChange}
           onSave={handleSave}
           onSaveAs={handleSaveAs}

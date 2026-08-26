@@ -123,17 +123,6 @@ describe('App', () => {
       expect(screen.getByTestId('version-footer')).toBeInTheDocument();
     });
 
-    it('reports a browser without the file system access api', async () => {
-      delete window.showOpenFilePicker;
-      await renderApp();
-
-      await click(/Select qrdata\.yaml/i);
-
-      expect(
-        screen.getByText('Error: File System Access API is not supported in this browser.')
-      ).toBeInTheDocument();
-    });
-
     it('reports a failed load', async () => {
       openPicker.mockRejectedValue(new Error('Failed to load file'));
       await renderApp();
@@ -575,6 +564,181 @@ describe('App', () => {
 
       expect(screen.queryByRole('dialog', { name: /overwrite/i })).not.toBeInTheDocument();
       expect(writes).toHaveLength(2);
+    });
+  });
+  // Firefox and Safari have neither picker. Everything here drives the real
+  // fallback - a file input and a download - rather than a mocked module, so
+  // the wiring between App and fileFallback is genuinely exercised.
+  describe('without the file system access api', () => {
+    let downloads;
+    let downloadedBlobs;
+
+    const readBlob = (blob) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(blob);
+      });
+
+    beforeEach(() => {
+      delete window.showOpenFilePicker;
+      delete window.showSaveFilePicker;
+      downloads = [];
+      downloadedBlobs = [];
+      URL.createObjectURL = jest.fn((blob) => {
+        downloadedBlobs.push(blob);
+        return `blob:fake/${downloadedBlobs.length}`;
+      });
+      URL.revokeObjectURL = jest.fn();
+      jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+        downloads.push({ name: this.download, href: this.href });
+      });
+    });
+
+    afterEach(() => {
+      delete URL.createObjectURL;
+      delete URL.revokeObjectURL;
+    });
+
+    const fileInput = () => document.body.querySelector('input[type="file"]');
+
+    const chooseFile = async (text = yaml.dump(CONTACTS), name = 'qrdata.yaml') => {
+      const input = fileInput();
+      Object.defineProperty(input, 'files', { value: [new File([text], name)] });
+      await act(async () => {
+        fireEvent.change(input);
+      });
+    };
+
+    const loadThroughInput = async (...args) => {
+      await renderApp();
+      await click(/Select qrdata\.yaml/i);
+      await chooseFile(...args);
+      await screen.findByText('Test Description 1');
+    };
+
+    it('loads a file through a file input instead of failing', async () => {
+      await loadThroughInput();
+
+      expect(screen.getByText('Test Description 1')).toBeInTheDocument();
+      expect(screen.queryByText(/^Error:/)).not.toBeInTheDocument();
+    });
+
+    it('shows where the data came from', async () => {
+      await loadThroughInput(yaml.dump(CONTACTS), 'work.yaml');
+
+      expect(screen.getByTestId('file-name')).toHaveTextContent('work.yaml');
+    });
+
+    // A file input hands over a copy, not a link to the file on disk, so there
+    // is nothing to write back to.
+    it('does not offer Save after loading through the input', async () => {
+      await loadThroughInput();
+
+      await click(/^Edit\b/);
+
+      expect(screen.queryByRole('button', { name: /^Save$/ })).not.toBeInTheDocument();
+      expect(screen.getByText(/cannot write back to a file it opened/i)).toBeInTheDocument();
+    });
+
+    it('changes nothing when the file dialog is dismissed', async () => {
+      await renderApp();
+      await click(/Select qrdata\.yaml/i);
+
+      await act(async () => {
+        fileInput().dispatchEvent(new Event('cancel'));
+      });
+
+      expect(screen.getByText(/No contacts available/i)).toBeInTheDocument();
+      expect(screen.queryByText(/^Error:/)).not.toBeInTheDocument();
+      expect(localStorage.getItem('contactsData')).toBeNull();
+    });
+
+    it('reports a file it cannot parse', async () => {
+      await renderApp();
+      await click(/Select qrdata\.yaml/i);
+      await chooseFile('- url: [unclosed');
+
+      // The read goes through FileReader, which settles after act() has
+      // flushed, so the error arrives a tick later than the change event.
+      await waitFor(() => expect(screen.getByText(/^Error:/)).toBeInTheDocument());
+      expect(localStorage.getItem('contactsData')).toBeNull();
+    });
+
+    it('downloads the entries when Save As has no save dialog', async () => {
+      await loadThroughInput();
+      await click(/^Edit\b/);
+      await type('Description for entry 1', 'Edited');
+
+      await click(/Save As/);
+
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].name).toMatch(/^qrdata-\d{8}-\d{6}\.yaml$/);
+      const written = await readBlob(downloadedBlobs[0]);
+      expect(yaml.load(written)[0].description).toBe('Edited');
+    });
+
+    it('says the entries were downloaded rather than saved', async () => {
+      await loadThroughInput();
+      await click(/^Edit\b/);
+
+      await click(/Save As/);
+
+      expect(screen.getByRole('status')).toHaveTextContent(/downloads folder/i);
+      expect(screen.getByRole('status')).not.toHaveTextContent(/^Saved\.$/);
+    });
+
+    it('can create and download a new file with nothing loaded', async () => {
+      await renderApp();
+      await click(/Create a new qrdata\.yaml/i);
+      await type('QR contents for entry 1', 'https://example.com/new');
+
+      await click(/Save As/);
+
+      expect(downloads).toHaveLength(1);
+      const written = await readBlob(downloadedBlobs[0]);
+      expect(yaml.load(written)).toEqual([{ url: 'https://example.com/new', description: '' }]);
+    });
+
+    // Validation still runs first: a download cannot be taken back.
+    it('does not download an entry with no payload', async () => {
+      await renderApp();
+      await click(/Create a new qrdata\.yaml/i);
+
+      await click(/Save As/);
+
+      expect(downloads).toEqual([]);
+      expect(URL.createObjectURL).not.toHaveBeenCalled();
+      expect(screen.getByRole('status')).toHaveTextContent(/Every entry needs something to encode/);
+    });
+
+    // The download name is the only trace of where the entries went, so it
+    // becomes the file the session is working on - which is also what keeps the
+    // next Save As from suggesting qrdata.yaml all over again.
+    it('remembers the name it downloaded under', async () => {
+      await loadThroughInput(yaml.dump(CONTACTS), 'work.yaml');
+      await click(/^Edit\b/);
+
+      await click(/Save As/);
+      await click(/Done/);
+
+      expect(screen.getByTestId('file-name')).toHaveTextContent(
+        /^work-\d{8}-\d{6}\.yaml$/
+      );
+      expect(localStorage.getItem('contactsFileName')).toMatch(/^work-\d{8}-\d{6}\.yaml$/);
+    });
+
+    it('shows the downloaded entries in the viewer afterwards', async () => {
+      await renderApp();
+      await click(/Create a new qrdata\.yaml/i);
+      await type('QR contents for entry 1', 'https://example.com/new');
+      await type('Description for entry 1', 'Brand new');
+      await click(/Save As/);
+
+      await click(/Done/);
+
+      expect(screen.getByText('Brand new')).toBeInTheDocument();
     });
   });
 });

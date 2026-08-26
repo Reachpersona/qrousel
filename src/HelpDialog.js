@@ -21,7 +21,10 @@ function HelpDialog({ onClose }) {
           Installed from <span className="help-address-value">{address}</span>
         </p>
       )}
-      <p className="help-note">Opening and saving files needs Chrome or Edge.</p>
+      <p className="help-note">
+        Chrome and Edge save back to the file you opened. Other browsers open a copy and
+        download your changes.
+      </p>
       <dl className="help">
         <dt>See a QR code&rsquo;s contents</dt>
         <dd>
@@ -42,12 +45,16 @@ function HelpDialog({ onClose }) {
         </dd>
 
         <dt>Save As</dt>
-        <dd>Recommended - writes a new file and leaves the original intact.</dd>
+        <dd>
+          Recommended - writes a new file and leaves the original intact. Where Save is not
+          offered, this downloads the new file instead.
+        </dd>
 
         <dt>Save</dt>
         <dd>
-          Overwrites the currently loaded file. Entries are kept, but comments, blank lines,
-          and quoting style are lost, since the file is rewritten from scratch.
+          Overwrites the currently loaded file - Chrome and Edge only. Entries are kept, but
+          comments, blank lines, and quoting style are lost, since the file is rewritten from
+          scratch.
         </dd>
 
         <dt>After a page reload</dt>

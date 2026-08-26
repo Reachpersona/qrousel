@@ -364,10 +364,10 @@ describe('ContactCarousel', () => {
       expect(screen.getByText(/Recommended - writes a new file/i)).toBeInTheDocument();
     });
 
-    it('states the browser requirement before the rest of the help', async () => {
+    it('states what this browser can do before the rest of the help', async () => {
       await openHelp();
 
-      const note = screen.getByText(/Chrome or Edge/i);
+      const note = screen.getByText(/Chrome and Edge save back/i);
       const list = document.querySelector('.help');
       // eslint-disable-next-line no-bitwise
       expect(note.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

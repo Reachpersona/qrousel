@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import yaml from 'js-yaml';
+import {
+  downloadFile,
+  isFileSystemAccessSupported,
+  pickFileWithInput,
+  readFileText,
+} from './fileFallback';
 
 const STORAGE_KEY = 'contactsData';
 const FILE_NAME_KEY = 'contactsFileName';
 
-export const UNSUPPORTED_MESSAGE = 'File System Access API is not supported in this browser.';
 export const CORRUPT_STORAGE_MESSAGE =
   'Saved contact data was invalid and has been cleared. Please select your qrdata.yaml file again.';
 
@@ -109,15 +114,26 @@ export default function useContactsFile() {
     }
   }, []);
 
-  // Adopting a file is one step, not three: a handle that is remembered while
-  // canSaveInPlace still says otherwise is a state the UI cannot report.
-  const rememberFile = useCallback((fileHandle, name) => {
-    const resolved = name || fileHandle.name || null;
-    fileHandleRef.current = fileHandle;
-    setCanSaveInPlace(true);
+  // The name of the file the data came from, on its own. Without the File
+  // System Access API a name is all there is to keep - a file input hands over
+  // a copy, and a download reports nothing back - so this is deliberately
+  // separable from adopting a handle.
+  const adoptName = useCallback((name) => {
+    const resolved = name || null;
     setFileName(resolved);
     if (resolved) localStorage.setItem(FILE_NAME_KEY, resolved);
   }, []);
+
+  // Adopting a file is one step, not three: a handle that is remembered while
+  // canSaveInPlace still says otherwise is a state the UI cannot report.
+  const rememberFile = useCallback(
+    (fileHandle, name) => {
+      fileHandleRef.current = fileHandle;
+      setCanSaveInPlace(true);
+      adoptName(name || fileHandle.name);
+    },
+    [adoptName]
+  );
 
   const commit = useCallback((entries) => {
     setContacts(entries);
@@ -126,9 +142,21 @@ export default function useContactsFile() {
 
   const load = useCallback(async () => {
     try {
-      if (!('showOpenFilePicker' in window)) {
-        throw new Error(UNSUPPORTED_MESSAGE);
+      if (!isFileSystemAccessSupported()) {
+        const file = await pickFileWithInput();
+        // A dismissed dialog is not a failure: leave every piece of state
+        // exactly as it was, including any file already loaded.
+        if (!file) return { ok: false, reason: 'cancelled' };
+
+        const parsed = yaml.load(await readFileText(file));
+        // Only the name survives. There is no handle to remember, so
+        // canSaveInPlace stays false and Save is never offered.
+        adoptName(file.name);
+        commit(parsed || []);
+        setError(null);
+        return { ok: true };
       }
+
       const [fileHandle] = await window.showOpenFilePicker({ types: [YAML_FILE_TYPE] });
       const file = await fileHandle.getFile();
       const parsed = yaml.load(await file.text());
@@ -143,7 +171,7 @@ export default function useContactsFile() {
       setError(e.message);
       return { ok: false, reason: 'load-failed', message: e.message };
     }
-  }, [commit, rememberFile]);
+  }, [adoptName, commit, rememberFile]);
 
   const save = useCallback(
     async (entries) => {
@@ -179,13 +207,21 @@ export default function useContactsFile() {
       const invalid = findInvalidEntries(entries);
       if (invalid.length > 0) return { ok: false, reason: 'invalid', invalid };
 
-      if (!('showSaveFilePicker' in window)) {
-        return { ok: false, reason: 'unsupported', message: UNSUPPORTED_MESSAGE };
+      const name = suggestedFileName(fileName, new Date());
+
+      if (!isFileSystemAccessSupported()) {
+        // A download is one-way: no handle comes back, and there is no way to
+        // learn where it landed or whether the name survived. Reporting it as
+        // a plain save would claim more than is known, hence via.
+        downloadFile(name, serializeContacts(entries));
+        adoptName(name);
+        commit(entries);
+        return { ok: true, via: 'download' };
       }
 
       try {
         const fileHandle = await window.showSaveFilePicker({
-          suggestedName: suggestedFileName(fileName, new Date()),
+          suggestedName: name,
           types: [YAML_FILE_TYPE],
         });
         await writeEntries(fileHandle, entries);
@@ -201,7 +237,7 @@ export default function useContactsFile() {
         return { ok: false, reason: 'write-failed', message: e.message };
       }
     },
-    [commit, rememberFile, fileName]
+    [adoptName, commit, rememberFile, fileName]
   );
 
   const clearError = useCallback(() => setError(null), []);

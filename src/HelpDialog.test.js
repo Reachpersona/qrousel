@@ -27,6 +27,15 @@ describe('appAddress', () => {
 });
 
 describe('HelpDialog', () => {
+  // Firefox and Safari can now load and download; only writing back to the
+  // file you opened is still Chrome and Edge only. Saying "needs Chrome or
+  // Edge" would send those users away from an app that works for them.
+  it('says what a browser without file access can still do', () => {
+    render(<HelpDialog onClose={() => {}} />);
+
+    expect(screen.getByText(/other browsers/i)).toHaveTextContent(/download/i);
+  });
+
   it('shows which deployment is being viewed', () => {
     render(<HelpDialog onClose={() => {}} />);
 

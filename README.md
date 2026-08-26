@@ -37,16 +37,39 @@ The `qrdata.yaml` file contains the qrcode data that will be used by the applica
 
 ## 1a. Editing `qrdata.yaml` in the app
 
-You do not have to hand-edit the file. In Chrome or Edge, load a `qrdata.yaml`
-and press the **Edit** button (the pencil, which shows the current file name) to
-add, change, delete, and reorder entries.
+You do not have to hand-edit the file. Load a `qrdata.yaml` and press the
+**Edit** button (the pencil, which shows the current file name) to add, change,
+delete, and reorder entries.
 
-* **Save** writes back to the file you opened.
+* **Save** writes back to the file you opened. Chrome and Edge only - see
+  *Browser support* below.
 * **Save As** writes a new file and leaves the original untouched. It suggests a
   timestamped name derived from the current file (`qrdata-20260825-143210.yaml`),
-  so repeated saves do not silently overwrite one another.
+  so repeated saves do not silently overwrite one another. Where **Save** is not
+  offered, this downloads the new file instead.
 * **Switch** opens a different `qrdata.yaml`.
 * **?** opens a short help panel.
+
+### Browser support
+
+Every browser can open a `qrdata.yaml`, view the codes, edit the entries, and
+write them out.
+
+Chrome and Edge additionally implement the [File System Access
+API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API),
+which is what lets the app hold on to the file you opened and write straight
+back to it. That is the only thing **Save** needs, and the only thing other
+browsers cannot do.
+
+In Firefox and Safari the app falls back to a plain file input and a download:
+
+* Opening gives the app a *copy* of the file, so there is nothing to write back
+  to and **Save** is not offered - the editor says so in place of the button.
+* **Save As** hands the file to your browser's downloads instead of asking where
+  to put it. Nothing comes back from a download, so the app cannot tell you
+  where the file landed or whether you renamed it on the way; it assumes the
+  name it asked for.
+* Replacing your original means moving the downloaded file over it yourself.
 
 **Saving rewrites the whole file, and comments do not survive.** The app parses
 the YAML into entries and writes fresh YAML back out, so comments, blank lines,
