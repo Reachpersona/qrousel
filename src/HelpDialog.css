@@ -26,3 +26,14 @@
   color: #666;
   margin: 12px 0 0;
 }
+
+/* Same weight as the browser-requirement note below it: both are asides about
+   the environment rather than instructions, so they should read alike. */
+.help-address {
+  margin: 12px 0 0;
+}
+
+.help-address-value {
+  font-family: monospace;
+  overflow-wrap: anywhere;
+}

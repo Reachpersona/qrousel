@@ -6,8 +6,15 @@ describe('VersionFooter', () => {
   const original = { ...process.env };
 
   afterEach(() => {
-    process.env.REACT_APP_VERSION = original.REACT_APP_VERSION;
-    process.env.REACT_APP_BUILD_TIME = original.REACT_APP_BUILD_TIME;
+    // Assigning undefined to process.env stores the string "undefined", which
+    // leaks into the next test and reads as a real value.
+    ['REACT_APP_VERSION', 'REACT_APP_BUILD_TIME', 'REACT_APP_COMMIT'].forEach((key) => {
+      if (original[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = original[key];
+      }
+    });
   });
 
   it('shows the version the app was built with', () => {
@@ -45,5 +52,26 @@ describe('VersionFooter', () => {
     render(<VersionFooter />);
 
     expect(screen.getByTestId('version-footer')).toHaveTextContent('vdev');
+  });
+  it('pins the build to the commit it was made from', () => {
+    process.env.REACT_APP_VERSION = '1.2.3';
+    process.env.REACT_APP_COMMIT = '7c0ddd9';
+    delete process.env.REACT_APP_BUILD_TIME;
+
+    render(<VersionFooter />);
+
+    expect(screen.getByTestId('version-footer')).toHaveTextContent('v1.2.3+7c0ddd9');
+  });
+
+  it('shows no commit marker when the commit is unknown', () => {
+    process.env.REACT_APP_VERSION = '1.2.3';
+    delete process.env.REACT_APP_COMMIT;
+    delete process.env.REACT_APP_BUILD_TIME;
+
+    render(<VersionFooter />);
+
+    const text = screen.getByTestId('version-footer').textContent;
+    expect(text).toBe('v1.2.3');
+    expect(text).not.toMatch(/\+|undefined/);
   });
 });
