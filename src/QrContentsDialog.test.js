@@ -51,15 +51,115 @@ describe('QrContentsDialog', () => {
     expect(open).toHaveBeenCalledWith('https://example.com/a', '_blank', 'noopener,noreferrer');
   });
 
-  it('does not offer to open a javascript: url', async () => {
-    const open = jest.fn();
-    window.open = open;
+  describe('what it will open', () => {
+    let open;
+    let linkClicks;
 
-    render(<QrContentsDialog url="javascript:alert(1)" onClose={() => {}} />);
+    beforeEach(() => {
+      open = jest.fn();
+      window.open = open;
+      linkClicks = [];
+      jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+        linkClicks.push(this.getAttribute('href'));
+      });
+    });
 
-    expect(screen.queryByRole('button', { name: /open/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/only http and https/i)).toBeInTheDocument();
-    expect(open).not.toHaveBeenCalled();
+    const press = async (name) => {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name }));
+      });
+    };
+
+    // The label says what pressing it will do. "Open" on a phone number tells
+    // the reader nothing about the dialer that is about to appear.
+    it.each([
+      ['https://example.com/a', /^Open/],
+      ['http://example.com/a', /^Open/],
+      ['tel:+15551234567', /^Call$/],
+      ['mailto:sales@example.com?subject=Quote', /^Email$/],
+      ['sms:+15551234567?body=Hi', /^Text$/],
+      ['geo:12.9716,77.5946', /^Show on map$/],
+    ])('offers to act on %s', (url, label) => {
+      render(<QrContentsDialog url={url} onClose={() => {}} />);
+
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    });
+
+    // A tel: or mailto: is handed to the operating system, not loaded as a
+    // page. A new tab would be left blank or torn down the moment the handler
+    // takes over, so these go through a link click instead.
+    it.each([
+      ['tel:+15551234567', /^Call$/],
+      ['mailto:sales@example.com', /^Email$/],
+      ['sms:+15551234567?body=Hi', /^Text$/],
+      ['geo:12.9716,77.5946', /^Show on map$/],
+    ])('hands %s to the device rather than a new tab', async (url, label) => {
+      render(<QrContentsDialog url={url} onClose={() => {}} />);
+
+      await press(label);
+
+      expect(linkClicks).toEqual([url]);
+      expect(open).not.toHaveBeenCalled();
+    });
+
+    it('leaves no link behind after handing a url to the device', async () => {
+      render(<QrContentsDialog url="tel:+15551234567" onClose={() => {}} />);
+
+      await press(/^Call$/);
+
+      expect(document.body.querySelector('a[href^="tel:"]')).toBeNull();
+    });
+
+    it('does not hand a web address to the device handler', async () => {
+      render(<QrContentsDialog url="https://example.com/a" onClose={() => {}} />);
+
+      await press(/^Open/);
+
+      expect(linkClicks).toEqual([]);
+      expect(open).toHaveBeenCalledTimes(1);
+    });
+
+    // javascript: is the one that matters: window.open would run it in this
+    // page's origin, where localStorage.contactsData is readable.
+    it.each([
+      ['javascript:alert(1)'],
+      ['data:text/html,<script>alert(1)</script>'],
+      ['file:///etc/passwd'],
+      ['intent://scan/#Intent;scheme=zxing;end'],
+      ['vbscript:msgbox(1)'],
+      ['about:blank'],
+      ['chrome://settings'],
+    ])('refuses to open %s', (url) => {
+      render(<QrContentsDialog url={url} onClose={() => {}} />);
+
+      expect(screen.queryByRole('button', { name: /^(Open|Call|Email|Text|Show on map)/ })).not
+        .toBeInTheDocument();
+      expect(screen.getByText(/shown as text only/i)).toBeInTheDocument();
+      expect(open).not.toHaveBeenCalled();
+      expect(linkClicks).toEqual([]);
+    });
+
+    // WIFI: and MECARD: are QR conventions a scanner app understands, not URL
+    // schemes - but new URL() parses them happily and reports a protocol, so a
+    // list built by exclusion would put a dead button on the payloads people
+    // most often store.
+    it.each([['WIFI:S=home;T=WPA;P=secret;;'], ['MECARD:N:Smith,John;TEL:15551234;;']])(
+      'offers no button for the QR-only format %s',
+      (url) => {
+        render(<QrContentsDialog url={url} onClose={() => {}} />);
+
+        expect(screen.queryByRole('button', { name: /^(Open|Call|Email|Text|Show on map)/ })).not
+          .toBeInTheDocument();
+        expect(open).not.toHaveBeenCalled();
+      }
+    );
+
+    it('offers no button for plain text', () => {
+      render(<QrContentsDialog url="just some notes" onClose={() => {}} />);
+
+      expect(screen.queryByRole('button', { name: /^(Open|Call|Email|Text|Show on map)/ })).not
+        .toBeInTheDocument();
+    });
   });
 
   it('still shows the url of a scheme it will not open', () => {
