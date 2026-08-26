@@ -72,7 +72,8 @@ function HelpDialog({ onClose }) {
         <dd>
           The pencil button, which shows the name of the file you are working on. Add, change,
           delete, and reorder your codes. A code can hold anything - a web address, a phone
-          number, wifi details, or a plain note.
+          number, wifi details, or a plain note. The <strong>?</strong> beside each contents
+          box shows what to type for each of those.
         </dd>
 
         <dt>

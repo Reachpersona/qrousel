@@ -29,6 +29,38 @@
   margin-bottom: 4px;
 }
 
+.editor-field-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.editor-field-name {
+  font-size: 13px;
+}
+
+/* Small enough to sit on a label line without becoming the loudest thing in a
+   list of entries, but still a real touch target. */
+.editor-help-button {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid #999;
+  background: #fff;
+  color: #333;
+  font-size: 12px;
+  /* A button's default padding and baseline alignment leave the glyph sitting
+     off-centre in a circle; centring it as a flex item ignores both. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
 .editor-field input,
 .editor-field textarea {
   width: 100%;

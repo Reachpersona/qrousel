@@ -1,0 +1,71 @@
+.payload-help {
+  font-size: 14px;
+}
+
+.payload-help-lead {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.payload-help dl {
+  margin: 12px 0 0;
+}
+
+.payload-help dt {
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.payload-help dd {
+  margin: 4px 0 0;
+}
+
+/* The example is the part being copied, so it gets its own line and may break
+   anywhere - a mailto: with a subject is longer than a phone screen. */
+.payload-help code {
+  display: block;
+  font-size: 13px;
+  background: #f2f2f2;
+  border-radius: 4px;
+  padding: 4px 6px;
+  overflow-wrap: anywhere;
+}
+
+/* Inside the explanation, code is a word rather than an example. */
+.payload-help dd span code {
+  display: inline;
+  padding: 0 3px;
+  background: #eee;
+}
+
+.payload-help dd span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #333;
+}
+
+.payload-help-heading {
+  font-size: 14px;
+  margin: 20px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.payload-help-tips {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #333;
+}
+
+.payload-help-tips li {
+  margin-top: 6px;
+}
+
+.payload-help-tips code {
+  display: inline;
+  padding: 0 3px;
+  background: #eee;
+}

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import QrContentsHelp from './QrContentsHelp';
 import './ContactEditor.css';
 
 // Pure so the end-of-list guard is reachable and testable. The buttons are also
@@ -29,6 +30,11 @@ function ContactEditor({
   onSaveAs,
   onDone,
 }) {
+  // Which payloads the viewer will act on is not guessable from an empty text
+  // box, and the answer is the same for every entry - so this is one dialog
+  // reachable from each row, not one per row.
+  const [isContentsHelpOpen, setIsContentsHelpOpen] = useState(false);
+
   const updateEntry = (index, field, value) => {
     onChange(entries.map((entry, i) => (i === index ? { ...entry, [field]: value } : entry)));
   };
@@ -60,16 +66,32 @@ function ContactEditor({
       <ol className="editor-entries">
         {entries.map((entry, index) => (
           <li key={index} className="editor-entry">
-            <label className="editor-field">
-              <span>QR contents</span>
+            <div className="editor-field">
+              {/* The help button cannot live inside the label: clicking a label
+                  also focuses its input, so opening the help would drag the
+                  keyboard up on a phone. */}
+              <div className="editor-field-head">
+                <label className="editor-field-name" htmlFor={`qr-contents-${index}`}>
+                  QR contents
+                </label>
+                <button
+                  type="button"
+                  className="editor-help-button"
+                  aria-label={`What can go in entry ${index + 1}`}
+                  onClick={() => setIsContentsHelpOpen(true)}
+                >
+                  ?
+                </button>
+              </div>
               <input
+                id={`qr-contents-${index}`}
                 type="text"
                 value={entry.url || ''}
                 aria-label={`QR contents for entry ${index + 1}`}
                 aria-invalid={invalid.includes(index)}
                 onChange={(e) => updateEntry(index, 'url', e.target.value)}
               />
-            </label>
+            </div>
             {invalid.includes(index) && (
               <p className="editor-entry-error">
                 An entry needs something to encode - a URL, or any other QR payload.
@@ -117,6 +139,8 @@ function ContactEditor({
         <button onClick={onSaveAs}>Save As&hellip;</button>
         <button onClick={onDone}>Done</button>
       </div>
+
+      {isContentsHelpOpen && <QrContentsHelp onClose={() => setIsContentsHelpOpen(false)} />}
     </div>
   );
 }
