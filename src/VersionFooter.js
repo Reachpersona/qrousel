@@ -8,14 +8,18 @@ import './VersionFooter.css';
  *
  * The app has no service worker, so a redeploy reaches people on their next
  * load; this footer is how you confirm which build you are actually looking at.
+ * The version itself never moves - nothing bumps package.json - so the commit
+ * and the build time are what actually identify a build.
  */
 function VersionFooter() {
   const version = process.env.REACT_APP_VERSION || 'dev';
+  const commit = process.env.REACT_APP_COMMIT;
   const builtAt = process.env.REACT_APP_BUILD_TIME;
 
   return (
     <p className="version-footer" data-testid="version-footer">
       v{version}
+      {commit ? `+${commit}` : ''}
       {builtAt ? ` · built ${builtAt}` : ''}
     </p>
   );
