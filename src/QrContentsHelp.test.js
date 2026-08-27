@@ -9,13 +9,33 @@ describe('QrContentsHelp', () => {
 
   it.each([
     ['a web address', /https:\/\/example\.com/],
-    ['a phone number', /tel:\+15551234567/],
+    ['a phone number', /\+15551234567/],
     ['an email', /mailto:/],
     ['a text message', /sms:\+15551234567/],
   ])('shows an example of %s', (_what, example) => {
     show();
 
     expect(body()).toHaveTextContent(example);
+  });
+
+  // Some scanners hand a tel: URI to the dialer without stripping the scheme,
+  // so the number arrives mangled. The plain number works everywhere, and the
+  // app offers Call for it either way - so that is what the help leads with.
+  it('leads with the plain number rather than tel:', () => {
+    show();
+
+    const phone = Array.from(body().querySelectorAll('dt')).find((dt) =>
+      /phone number/i.test(dt.textContent)
+    );
+    const example = phone.nextElementSibling.querySelector('code');
+    expect(example).toHaveTextContent('+15551234567');
+    expect(example).not.toHaveTextContent(/tel:/);
+  });
+
+  it('warns that some scanners mishandle tel:', () => {
+    show();
+
+    expect(body()).toHaveTextContent(/some (phone )?scanners/i);
   });
 
   // geo: is not offered, so the help must not teach it.

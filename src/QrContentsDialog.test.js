@@ -175,6 +175,60 @@ describe('QrContentsDialog', () => {
       expect(screen.getByRole('button', { name: /^Open/ })).toBeInTheDocument();
     });
 
+    // Some scanners hand a tel: URI to the dialer without stripping the scheme,
+    // so the number arrives with "tel" keypad-translated onto the front. A bare
+    // international number avoids that everywhere, so the app has to be able to
+    // act on one - otherwise the payload that scans best has no button here.
+    it.each([
+      ['+15551234567'],
+      ['+1 555-123-4567'],
+      ['+1 (555) 123.4567'],
+      ['+91 80 4567 8900'],
+    ])('offers to call the bare number %s', (url) => {
+      render(<QrContentsDialog url={url} onClose={() => {}} />);
+
+      expect(screen.getByRole('button', { name: /^Call$/ })).toBeInTheDocument();
+    });
+
+    it('dials a bare number with the separators stripped', async () => {
+      render(<QrContentsDialog url="+1 (555) 123-4567" onClose={() => {}} />);
+
+      await press(/^Call$/);
+
+      expect(linkClicks).toEqual(['tel:+15551234567']);
+      expect(open).not.toHaveBeenCalled();
+    });
+
+    // Requiring the + is what keeps this from swallowing order numbers, serial
+    // numbers and numeric notes. Nothing that is text today becomes a button.
+    it.each([
+      ['15551234567'],
+      ['5551234567'],
+      ['0015551234567'],
+      // No country code starts with a zero, so +0... is not a number anyone can
+      // ring - it is far more likely to be an id that happens to carry a plus.
+      ['+04086603695'],
+      ['order 5551234567'],
+      ['+1555123456x'],
+    ])('offers no call button for %s', (url) => {
+      render(<QrContentsDialog url={url} onClose={() => {}} />);
+
+      expect(screen.queryByRole('button', { name: ACTION_BUTTON })).not.toBeInTheDocument();
+    });
+
+    // E.164 is 8 to 15 digits. Test the edges, not the middle.
+    it.each([
+      ['+12345678', 'calls', true],
+      ['+1234567', 'does not call', false],
+      ['+123456789012345', 'calls', true],
+      ['+1234567890123456', 'does not call', false],
+    ])('%s: %s (boundary)', (url, _what, expected) => {
+      render(<QrContentsDialog url={url} onClose={() => {}} />);
+
+      const button = screen.queryByRole('button', { name: /^Call$/ });
+      expect(Boolean(button)).toBe(expected);
+    });
+
     it('offers no button for plain text', () => {
       render(<QrContentsDialog url="just some notes" onClose={() => {}} />);
 

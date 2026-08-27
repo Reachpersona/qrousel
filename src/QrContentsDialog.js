@@ -40,19 +40,61 @@ function protocolOf(url) {
   }
 }
 
+// Printed numbers carry visual separators that mean nothing, so they come out
+// before matching. E.164 allows 8 to 15 digits.
+const PHONE_SEPARATORS = /[\s().-]/g;
+const E164 = /^\+[1-9]\d{7,14}$/;
+
 /**
- * What pressing the button will do, or null if there is no button. Note that a
- * QR-only convention like WIFI:S=home;; parses as a URL and reports a protocol
- * of wifi:, so it is excluded by not being in the list rather than by failing
- * to parse.
+ * A bare international number as a dialable string, or null.
+ *
+ * This exists because some scanners hand a tel: URI to the dialer without
+ * stripping the scheme, so the number arrives with "tel" keypad-translated onto
+ * the front - a bare number avoids that on every phone. If the app could not
+ * act on one, the payload that scans best everywhere would be the one with no
+ * button here.
+ *
+ * The leading + is required. Without it any long run of digits - an order
+ * number, a serial, a numeric note - would sprout a call button.
  */
-export function openLabel(url) {
+export function callableNumber(payload) {
+  const compact = String(payload == null ? '' : payload).replace(PHONE_SEPARATORS, '');
+  return E164.test(compact) ? compact : null;
+}
+
+/**
+ * What pressing the button will do, or null if there is no button: the label,
+ * the address to hand over, and whether that address is a page to load rather
+ * than something for the device to handle.
+ *
+ * Note that a QR-only convention like WIFI:S=home;; parses as a URL and reports
+ * a protocol of wifi:, so it is excluded by not being in the list rather than
+ * by failing to parse.
+ */
+export function openTarget(url) {
   const protocol = protocolOf(url);
-  return (protocol && OPEN_LABELS.get(protocol)) || null;
+  const label = protocol && OPEN_LABELS.get(protocol);
+  if (label) {
+    return { label, href: url, isWeb: WEB_PROTOCOLS.includes(protocol) };
+  }
+
+  const number = callableNumber(url);
+  if (number) {
+    // The payload is not a URL, so the dialer needs one built for it - and
+    // built from the compacted digits, since a tel: URI may not contain spaces.
+    return { label: 'Call', href: `tel:${number}`, isWeb: false };
+  }
+
+  return null;
+}
+
+export function openLabel(url) {
+  const target = openTarget(url);
+  return target ? target.label : null;
 }
 
 export function isOpenable(url) {
-  return openLabel(url) !== null;
+  return openTarget(url) !== null;
 }
 
 const MAX_NAME_LENGTH = 40;
@@ -101,12 +143,11 @@ function QrContentsDialog({ url, imageDataUrl, onClose }) {
     }
   };
 
-  const label = openLabel(url);
-  const isWebAddress = WEB_PROTOCOLS.includes(protocolOf(url));
+  const target = openTarget(url);
 
   const openUrl = () => {
-    if (isWebAddress) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+    if (target.isWeb) {
+      window.open(target.href, '_blank', 'noopener,noreferrer');
       return;
     }
     // tel:, mailto: and sms: are handed to the operating system rather than
@@ -114,7 +155,7 @@ function QrContentsDialog({ url, imageDataUrl, onClose }) {
     // instant the handler takes over, so these go through a link click - which
     // is also what keeps them out of the popup blocker.
     const link = document.createElement('a');
-    link.href = url;
+    link.href = target.href;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -130,10 +171,10 @@ function QrContentsDialog({ url, imageDataUrl, onClose }) {
             Save image
           </a>
         )}
-        {label ? (
+        {target ? (
           <button onClick={openUrl}>
-            {label}
-            {isWebAddress && ' \u2197'}
+            {target.label}
+            {target.isWeb && ' \u2197'}
           </button>
         ) : (
           <span className="qr-dialog-note">

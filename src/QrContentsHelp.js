@@ -27,10 +27,13 @@ function QrContentsHelp({ onClose }) {
 
           <dt>A phone number</dt>
           <dd>
-            <code>tel:+15551234567</code>
+            <code>+15551234567</code>
             <span>
-              Offers to call it. Use the full international number, starting with + and the
-              country code.
+              Just the number, starting with + and the country code - no spaces needed, though
+              <code>+1 555-123-4567</code> works too. Offers to call it. Writing it as{' '}
+              <code>tel:+15551234567</code> also works here, but some phone scanners get that
+              wrong and dial the word &ldquo;tel&rdquo; along with the number, so the plain
+              number is the safer thing to put in a code.
             </span>
           </dd>
 
