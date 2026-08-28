@@ -71,9 +71,11 @@ Each entry can carry its own page background:
 * **The text colour follows the background** automatically: light backgrounds get
   dark text, dark backgrounds get light text.
 * **A pale background is drawn into the QR code itself**, so the code blends into
-  the page instead of sitting on a white square. A dark background keeps the
+  the page instead of sitting on a white square. A darker background keeps the
   white surround, because black modules on a dark colour are not reliably
-  scannable.
+  scannable. The first four presets tint; the rest keep the plate.
+* The editor names the colour under the swatch row, since the swatches
+  themselves carry no text and the palest of them barely change a light page.
 * An entry with no `background` key follows the phone's light or dark setting. An
   entry **with** one looks the same either way - the colour is your choice about
   how that card looks, not a theme for the viewer's phone to override.

@@ -92,15 +92,46 @@ export function canTintQr(hex) {
   return luminance >= QR_TINT_MIN_LUMINANCE;
 }
 
+/**
+ * The contrast ratio between two colours, per WCAG 2, or null if either is not
+ * a colour this understands. 1:1 is identical, 21:1 is black against white.
+ */
+export function contrastRatio(a, b) {
+  const first = relativeLuminance(a);
+  const second = relativeLuminance(b);
+  if (first === null || second === null) return null;
+  const [lighter, darker] = first > second ? [first, second] : [second, first];
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 // One tap covers the common case; the picker is there for everything else.
-// Every one of these is light enough to tint the QR code, so the quick path
-// never produces a white square the user did not ask for.
+//
+// These were once all pale enough for the QR code to tint into, which sounded
+// tidy and made every one of them a near-white indistinguishable from having no
+// background at all - the palest sat at 1.08:1 against a white page, so tapping
+// it appeared to do nothing whatsoever. The range is the point; the first four
+// still tint, and the rest hand the code back its white plate, which is a
+// visible difference rather than a broken one.
 export const BACKGROUND_PRESETS = [
-  { name: 'Paper', value: '#fdf6e3' },
-  { name: 'Blush', value: '#ffe8e8' },
-  { name: 'Peach', value: '#ffe8d6' },
-  { name: 'Mint', value: '#e0f2e9' },
-  { name: 'Sky', value: '#e3f2fd' },
-  { name: 'Lilac', value: '#ede7f6' },
-  { name: 'Slate', value: '#e8eaed' },
+  { name: 'Paper', value: '#f2e6c8' },
+  { name: 'Blush', value: '#f6d5d5' },
+  { name: 'Mint', value: '#cdeadb' },
+  { name: 'Sky', value: '#cbe4f9' },
+  { name: 'Amber', value: '#e8a33d' },
+  { name: 'Teal', value: '#2f9e8f' },
+  { name: 'Indigo', value: '#4b4f9e' },
+  { name: 'Ink', value: '#1d3557' },
 ];
+
+/**
+ * What to call the background an entry is carrying: a preset's name, the colour
+ * itself when it came from the picker, or 'none'. The swatches are colour
+ * squares with no visible text, so without this the choice a user just made has
+ * no name anywhere on screen.
+ */
+export function backgroundLabel(value) {
+  const hex = normalizeHex(value);
+  if (!hex) return 'none';
+  const preset = BACKGROUND_PRESETS.find((candidate) => candidate.value === hex);
+  return preset ? preset.name : hex;
+}

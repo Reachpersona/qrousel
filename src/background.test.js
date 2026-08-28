@@ -1,11 +1,37 @@
 import {
   normalizeHex,
   isLightBackground,
+  contrastRatio,
+  backgroundLabel,
   relativeLuminance,
   textColorFor,
   canTintQr,
   BACKGROUND_PRESETS,
 } from './background';
+
+// Perceptual distance in OKLab. Roughly, 0.02 is the threshold of noticing and
+// 0.1 is plainly a different colour. Lives here rather than in the app because
+// nothing the app does at runtime needs it - it exists to hold the palette to a
+// standard that "looks fine to me" cannot.
+const oklab = (hex) => {
+  const [r, g, b] = [1, 3, 5]
+    .map((start) => parseInt(hex.slice(start, start + 2), 16) / 255)
+    .map((c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+};
+
+const distance = (a, b) => {
+  const [al, aa, ab] = oklab(a);
+  const [bl, ba, bb] = oklab(b);
+  return Math.hypot(al - bl, aa - ba, ab - bb);
+};
 
 describe('normalizeHex', () => {
   it('accepts a six digit colour', () => {
@@ -162,11 +188,38 @@ describe('BACKGROUND_PRESETS', () => {
     });
   });
 
-  // The one-tap path should never produce the abrupt white square. Anything
-  // dark is still reachable through the custom picker.
-  it('are all light enough for the QR code to blend into', () => {
+  // Every preset used to be pale enough for the QR to tint into, which sounded
+  // tidy and made them all near-white and indistinguishable from having no
+  // background at all. Range matters more than seamlessness.
+  it('offers colours you can actually see against a plain page', () => {
     BACKGROUND_PRESETS.forEach((preset) => {
-      expect(canTintQr(preset.value)).toBe(true);
+      expect(distance(preset.value, '#ffffff')).toBeGreaterThan(0.06);
+    });
+  });
+
+  it('spans both QR treatments, rather than hiding one of them', () => {
+    const tinting = BACKGROUND_PRESETS.filter((p) => canTintQr(p.value));
+    expect(tinting.length).toBeGreaterThan(0);
+    expect(tinting.length).toBeLessThan(BACKGROUND_PRESETS.length);
+  });
+
+  // Deliberately not contrastRatio: that measures lightness alone, so a green
+  // and a blue of the same lightness score 1.02:1 while being obviously
+  // different colours. Telling two swatches apart is a question about hue as
+  // much as brightness, which is what a perceptual distance answers.
+  it('are distinguishable from one another', () => {
+    BACKGROUND_PRESETS.forEach((a, i) => {
+      BACKGROUND_PRESETS.slice(i + 1).forEach((b) => {
+        expect(distance(a.value, b.value)).toBeGreaterThan(0.04);
+      });
+    });
+  });
+
+  // Whatever the colour, the text the app puts on it has to be readable. AA for
+  // body text is 4.5:1.
+  it('all take readable text', () => {
+    BACKGROUND_PRESETS.forEach((preset) => {
+      expect(contrastRatio(textColorFor(preset.value), preset.value)).toBeGreaterThan(4.5);
     });
   });
 
@@ -175,5 +228,48 @@ describe('BACKGROUND_PRESETS', () => {
       expect(typeof preset.name).toBe('string');
       expect(preset.name.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('backgroundLabel', () => {
+  it('names a preset', () => {
+    expect(backgroundLabel(BACKGROUND_PRESETS[0].value)).toBe(BACKGROUND_PRESETS[0].name);
+  });
+
+  it('names a preset written in shorthand or upper case', () => {
+    const upper = BACKGROUND_PRESETS[0].value.toUpperCase();
+    expect(backgroundLabel(upper)).toBe(BACKGROUND_PRESETS[0].name);
+  });
+
+  // A colour from the picker has no name worth inventing; the code itself is
+  // the useful thing to show, since it is what someone would have to type.
+  it('falls back to the colour itself for anything else', () => {
+    expect(backgroundLabel('#123456')).toBe('#123456');
+  });
+
+  it('says none when there is no usable colour', () => {
+    expect(backgroundLabel(null)).toBe('none');
+    expect(backgroundLabel(undefined)).toBe('none');
+    expect(backgroundLabel('navy')).toBe('none');
+    expect(backgroundLabel('')).toBe('none');
+  });
+});
+
+describe('contrastRatio', () => {
+  it('is 21:1 between black and white', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 1);
+  });
+
+  it('is 1:1 for a colour against itself', () => {
+    expect(contrastRatio('#1d3557', '#1d3557')).toBeCloseTo(1, 5);
+  });
+
+  it('does not care which way round the two are given', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBe(contrastRatio('#ffffff', '#000000'));
+  });
+
+  it('is null when either colour cannot be measured', () => {
+    expect(contrastRatio('navy', '#ffffff')).toBeNull();
+    expect(contrastRatio('#ffffff', null)).toBeNull();
   });
 });

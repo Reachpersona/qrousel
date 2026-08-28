@@ -114,6 +114,15 @@
 }
 
 
+/* The swatches carry no visible text, so this is the only place the choice is
+   named. It doubles as feedback that a tap registered - the palest presets
+   barely change a light page. */
+.editor-background-name {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .editor-swatches {
   display: flex;
   flex-wrap: wrap;

@@ -183,6 +183,48 @@ describe('ContactEditor', () => {
       expect('background' in firstEntry(onChange)).toBe(false);
     });
 
+    // The swatches are colour squares with no visible text - their names live
+    // only in aria-labels. Without this the choice you just made has no name
+    // anywhere on screen, and on a light phone the palest presets change so
+    // little that a tap looks like it did nothing at all.
+    describe('the caption', () => {
+      const caption = () => screen.getByTestId('background-name-1');
+
+      it('names the preset that was tapped', () => {
+        showOne({ ...PLAIN, background: BACKGROUND_PRESETS[3].value });
+
+        expect(caption()).toHaveTextContent(BACKGROUND_PRESETS[3].name);
+      });
+
+      it('says none when there is no colour', () => {
+        showOne(PLAIN);
+
+        expect(caption()).toHaveTextContent(/none/i);
+      });
+
+      // A picked colour has no name worth inventing, and the code is the thing
+      // someone would need in order to write it into the file by hand.
+      it('shows the colour itself when it came from the picker', () => {
+        showOne({ ...PLAIN, background: '#123456' });
+
+        expect(caption()).toHaveTextContent('#123456');
+      });
+
+      it('updates as soon as a swatch is tapped', () => {
+        const onChange = showOne(PLAIN);
+
+        fireEvent.click(screen.getByRole('button', { name: BACKGROUND_PRESETS[4].name }));
+
+        expect(firstEntry(onChange).background).toBe(BACKGROUND_PRESETS[4].value);
+      });
+
+      it('says none for a value the app cannot use', () => {
+        showOne({ ...PLAIN, background: 'navy' });
+
+        expect(caption()).toHaveTextContent(/none/i);
+      });
+    });
+
     it('shows which colour is currently set', () => {
       showOne({ ...PLAIN, background: BACKGROUND_PRESETS[1].value });
 

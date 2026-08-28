@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import QrContentsHelp from './QrContentsHelp';
-import { BACKGROUND_PRESETS, normalizeHex } from './background';
+import { BACKGROUND_PRESETS, backgroundLabel, normalizeHex } from './background';
 import './ContactEditor.css';
 
 // Pure so the end-of-list guard is reachable and testable. The buttons are also
@@ -165,6 +165,9 @@ function ContactEditor({
                   />
                 </label>
               </div>
+              <p className="editor-background-name" data-testid={`background-name-${index + 1}`}>
+                {backgroundLabel(entry.background)}
+              </p>
               {backgroundProblem(entry) === 'unrecognised' && (
                 <p className="editor-entry-error">
                   Not a colour QRousel understands. Pick one above, or write it in the file as
