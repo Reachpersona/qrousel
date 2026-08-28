@@ -14,7 +14,7 @@
 }
 
 .editor-entry {
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border);
   padding: 12px 0;
 }
 
@@ -47,9 +47,9 @@
   height: 20px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 1px solid #999;
-  background: #fff;
-  color: #333;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: 12px;
   /* A button's default padding and baseline alignment leave the glyph sitting
      off-centre in a circle; centring it as a flex item ignores both. */
@@ -71,11 +71,11 @@
 }
 
 .editor-field input[aria-invalid='true'] {
-  border: 1px solid #c00;
+  border: 1px solid var(--danger);
 }
 
 .editor-entry-error {
-  color: #c00;
+  color: var(--danger);
   font-size: 13px;
   margin: 0 0 8px;
 }
@@ -90,7 +90,7 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border);
   padding-top: 12px;
   margin-top: 12px;
 }
@@ -102,15 +102,15 @@
 }
 
 .editor-status-ok {
-  color: #060;
+  color: var(--ok);
 }
 
 .editor-status-error {
-  color: #c00;
+  color: var(--danger);
 }
 
 .editor-empty {
-  color: #666;
+  color: var(--text-muted);
 }
 
 
@@ -128,7 +128,7 @@
   height: 32px;
   flex-shrink: 0;
   padding: 0;
-  border: 1px solid #999;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -136,7 +136,7 @@
 /* The selected swatch has to be legible against its own colour, so the ring
    sits outside the border rather than recolouring it. */
 .editor-swatch[aria-pressed='true'] {
-  outline: 2px solid #0b5cab;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -147,7 +147,8 @@
   height: 32px;
   padding: 0 8px;
   font-size: 12px;
-  background: #fff;
+  background: var(--surface-raised);
+  color: var(--text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -160,7 +161,7 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border: 1px solid #999;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   background: none;
   cursor: pointer;

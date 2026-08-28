@@ -5,7 +5,7 @@
 .payload-help-lead {
   margin: 12px 0 0;
   font-size: 13px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .payload-help dl {
@@ -26,7 +26,7 @@
 .payload-help code {
   display: block;
   font-size: 13px;
-  background: #f2f2f2;
+  background: var(--surface-sunken);
   border-radius: 4px;
   padding: 4px 6px;
   overflow-wrap: anywhere;
@@ -36,28 +36,28 @@
 .payload-help dd span code {
   display: inline;
   padding: 0 3px;
-  background: #eee;
+  background: var(--surface-sunken);
 }
 
 .payload-help dd span {
   display: block;
   margin-top: 4px;
   font-size: 13px;
-  color: #333;
+  color: var(--text-on-sunken);
 }
 
 .payload-help-heading {
   font-size: 14px;
   margin: 20px 0 0;
   padding-top: 10px;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border);
 }
 
 .payload-help-tips {
   margin: 8px 0 0;
   padding-left: 20px;
   font-size: 13px;
-  color: #333;
+  color: var(--text-on-sunken);
 }
 
 .payload-help-tips li {
@@ -67,5 +67,5 @@
 .payload-help-tips code {
   display: inline;
   padding: 0 3px;
-  background: #eee;
+  background: var(--surface-sunken);
 }

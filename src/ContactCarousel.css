@@ -16,16 +16,10 @@
      name one sets these inline, which wins in both schemes: the colour is the
      owner's choice about how their card looks to other people, not a theme for
      the viewer's phone to override. */
-  background-color: #ffffff;
-  color: #111111;
+  background-color: var(--surface);
+  color: var(--text);
 }
 
-@media (prefers-color-scheme: dark) {
-  .ContactCarousel {
-    background-color: #121212;
-    color: #f0f0f0;
-  }
-}
 
 /* min-height: 0 at every level: a flex item defaults to min-height: auto, which
    floors it at its content size and stops the shrinking below from reaching the
