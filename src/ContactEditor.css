@@ -113,3 +113,55 @@
   color: #666;
 }
 
+
+.editor-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Big enough to hit with a thumb on a phone, which is the only place this app
+   is really used. */
+.editor-swatch {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid #999;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* The selected swatch has to be legible against its own colour, so the ring
+   sits outside the border rather than recolouring it. */
+.editor-swatch[aria-pressed='true'] {
+  outline: 2px solid #0b5cab;
+  outline-offset: 2px;
+}
+
+.editor-swatch-none,
+.editor-swatch-custom {
+  width: auto;
+  min-width: 44px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* The native colour input is a swatch in its own right; the label around it is
+   the visible control, so the input only has to be tappable. */
+.editor-swatch-custom input[type='color'] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}

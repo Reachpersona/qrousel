@@ -50,6 +50,34 @@ delete, and reorder entries.
 * **Switch** opens a different `qrdata.yaml`.
 * **?** opens a short help panel.
 
+### Background colours
+
+Each entry can carry its own page background:
+
+```yaml
+- url: https://example.com
+  description: |
+    Our office
+  background: '#ffe8d6'
+```
+
+* **Quote it.** In YAML a `#` starts a comment, so `background: #ffe8d6`
+  unquoted is read as an empty value and the colour silently disappears. The app
+  always writes the quotes; only hand-edited files can get this wrong, and the
+  editor points it out when they do.
+* **Hex only** - `#rgb` or `#rrggbb`. Not `navy`, not `rgb(...)`. The editor
+  offers a row of presets and a colour picker, so this only matters if you are
+  editing the file by hand.
+* **The text colour follows the background** automatically: light backgrounds get
+  dark text, dark backgrounds get light text.
+* **A pale background is drawn into the QR code itself**, so the code blends into
+  the page instead of sitting on a white square. A dark background keeps the
+  white surround, because black modules on a dark colour are not reliably
+  scannable.
+* An entry with no `background` key follows the phone's light or dark setting. An
+  entry **with** one looks the same either way - the colour is your choice about
+  how that card looks, not a theme for the viewer's phone to override.
+
 ### Browser support
 
 Every browser can open a `qrdata.yaml`, view the codes, edit the entries, and

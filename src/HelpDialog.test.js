@@ -128,6 +128,12 @@ describe('HelpDialog', () => {
     });
   });
 
+  it('mentions that an entry can have its own background colour', () => {
+    render(<HelpDialog onClose={() => {}} />);
+
+    expect(document.querySelector('.help')).toHaveTextContent(/background colour/i);
+  });
+
   it('shows which deployment is being viewed', () => {
     render(<HelpDialog onClose={() => {}} />);
 

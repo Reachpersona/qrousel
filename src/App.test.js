@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, screen, act, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor, cleanup, within } from '@testing-library/react';
 import yaml from 'js-yaml';
 import QRCode from 'qrcode';
 import App from './App';
+import { BACKGROUND_PRESETS } from './background';
 
 jest.mock('qrcode', () => ({
   toDataURL: jest.fn(() => Promise.resolve('data:image/png;base64,mock-qr-code')),
@@ -421,6 +422,61 @@ describe('App', () => {
       await click(/^Done$/);
 
       expect(window.confirm).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('entry background colour', () => {
+    // Every entry has its own swatch row, so a preset name alone is ambiguous.
+    const pickBackgroundFor = async (entry, name) => {
+      const group = screen.getByRole('group', { name: `Background for entry ${entry}` });
+      await act(async () => {
+        fireEvent.click(within(group).getByRole('button', { name }));
+      });
+    };
+
+    it('writes the chosen colour into the file', async () => {
+      await loadFile();
+      await click(/^Edit\b/);
+
+      await pickBackgroundFor(1, BACKGROUND_PRESETS[1].name);
+      await saveInPlace();
+
+      expect(yaml.load(writes[0].text)[0].background).toBe(BACKGROUND_PRESETS[1].value);
+    });
+
+    // A bare #1d3557 after a colon is a comment in YAML, so an unquoted colour
+    // would be written out and read back as null - the value would survive
+    // exactly one save.
+    it('quotes the colour, so it survives being read back', async () => {
+      await loadFile();
+      await click(/^Edit\b/);
+
+      await pickBackgroundFor(1, BACKGROUND_PRESETS[1].name);
+      await saveInPlace();
+
+      expect(writes[0].text).toContain(`background: '${BACKGROUND_PRESETS[1].value}'`);
+    });
+
+    it('carries the colour through to the viewer', async () => {
+      await loadFile();
+      await click(/^Edit\b/);
+      await pickBackgroundFor(1, BACKGROUND_PRESETS[1].name);
+      await saveInPlace();
+
+      await click(/Done/);
+
+      expect(document.querySelector('.ContactCarousel')).toHaveStyle({
+        backgroundColor: BACKGROUND_PRESETS[1].value,
+      });
+    });
+
+    it('leaves an entry with no colour out of the file entirely', async () => {
+      await loadFile();
+      await click(/^Edit\b/);
+
+      await saveInPlace();
+
+      expect(writes[0].text).not.toContain('background');
     });
   });
 

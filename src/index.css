@@ -1,3 +1,12 @@
+/* Without this, Chrome on Android applies its own auto-darkening to a page
+   that has not said which schemes it handles - which would recolour a
+   background the entry owner chose deliberately, and can filter images. It also
+   flips on its own when battery saver turns the system dark. Declaring both
+   schemes opts out of that guesswork and gets native form controls that match. */
+:root {
+  color-scheme: light dark;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

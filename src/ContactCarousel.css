@@ -12,6 +12,19 @@
   /* Every band below can shrink, so nothing should reach this - it is here so a
      miscalculation cannot push a control off the screen unnoticed. */
   overflow: hidden;
+  /* The default when an entry names no colour of its own. An entry that does
+     name one sets these inline, which wins in both schemes: the colour is the
+     owner's choice about how their card looks to other people, not a theme for
+     the viewer's phone to override. */
+  background-color: #ffffff;
+  color: #111111;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ContactCarousel {
+    background-color: #121212;
+    color: #f0f0f0;
+  }
 }
 
 /* min-height: 0 at every level: a flex item defaults to min-height: auto, which

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { marked } from 'marked';
 import QrContentsDialog from './QrContentsDialog';
+import { normalizeHex, textColorFor, canTintQr } from './background';
 import HelpDialog from './HelpDialog';
 import VersionFooter from './VersionFooter';
 import './ContactCarousel.css';
@@ -37,7 +38,17 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
               // Rendered at ~80% of the viewport width, so generate well above
               // that: a small raster upscaled on a high-DPI screen blurs the
               // module edges a scanner needs. ~10 KiB per code as a data URL.
-              return await QRCode.toDataURL(contact.url, { width: QR_PIXEL_SIZE });
+              const options = { width: QR_PIXEL_SIZE };
+              // A pale page can take the quiet zone and light modules, so the
+              // code stops being a white square sitting on a colour. Only when
+              // the contrast against the black modules survives it - a code a
+              // camera cannot read still looks perfectly fine on screen, which
+              // is what makes getting this wrong expensive.
+              const tint = normalizeHex(contact.background);
+              if (tint && canTintQr(tint)) {
+                options.color = { light: tint };
+              }
+              return await QRCode.toDataURL(contact.url, options);
             } catch (error) {
               console.error(`Error generating QR code for ${contact.url}:`, error);
               return '/placeholder.png';
@@ -174,8 +185,16 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
     }
   };
 
+  // Null unless the current entry names a colour this understands, so an entry
+  // with no colour and an entry with a broken one both fall through to the
+  // stylesheet rather than to a half-applied inline style.
+  const background = normalizeHex(contacts[currentIndex]?.background);
+  const pageStyle = background
+    ? { backgroundColor: background, color: textColorFor(background) }
+    : undefined;
+
   return (
-    <div className="ContactCarousel" ref={carouselRef}>
+    <div className="ContactCarousel" ref={carouselRef} style={pageStyle}>
       <div className="carousel-main">
         <div className="carousel-item">
           <div className="carousel-content">

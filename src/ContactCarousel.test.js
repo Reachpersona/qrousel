@@ -419,4 +419,98 @@ describe('ContactCarousel', () => {
       expect(main).not.toContainElement(actions);
     });
   });
+  // A per-entry page colour. The value comes from a user-supplied file and ends
+  // up in a style attribute, so an unrecognised one must style nothing at all
+  // rather than something broken.
+  describe('entry background colour', () => {
+    const root = () => document.querySelector('.ContactCarousel');
+
+    const WITH_COLOURS = [
+      { url: 'https://example.com/a', description: 'Pale one', background: '#ffe8d6' },
+      { url: 'https://example.com/b', description: 'Dark one', background: '#1d3557' },
+      { url: 'https://example.com/c', description: 'Plain one' },
+    ];
+
+    it('paints the page with the current entry colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveStyle({ backgroundColor: '#ffe8d6' });
+    });
+
+    it('repaints when moving to the next entry', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      await clickNext();
+
+      expect(root()).toHaveStyle({ backgroundColor: '#1d3557' });
+    });
+
+    it('leaves the page alone for an entry with no colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+      await clickNext();
+
+      await clickNext();
+
+      expect(root().style.backgroundColor).toBe('');
+      expect(root().style.color).toBe('');
+    });
+
+    it('styles nothing at all when the colour is not one it understands', async () => {
+      await renderWithContacts([
+        { url: 'https://example.com/a', description: 'Bad colour', background: 'navy' },
+      ]);
+
+      expect(root().style.backgroundColor).toBe('');
+      expect(root().style.color).toBe('');
+    });
+
+    it('puts dark text on a pale page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveStyle({ color: '#111111' });
+    });
+
+    it('puts light text on a dark page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      await clickNext();
+
+      expect(root()).toHaveStyle({ color: '#ffffff' });
+    });
+
+    // Tinting the quiet zone makes the code blend into a pale page. On a dark
+    // page it would leave black modules on near-black, so the code keeps its
+    // white plate instead.
+    it('tints the QR code to match a pale page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(QRCode.toDataURL).toHaveBeenCalledWith(
+        'https://example.com/a',
+        expect.objectContaining({ color: { light: '#ffe8d6' } })
+      );
+    });
+
+    it('does not tint the QR code on a dark page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      const call = QRCode.toDataURL.mock.calls.find((c) => c[0] === 'https://example.com/b');
+      expect(call[1]).not.toHaveProperty('color');
+    });
+
+    it('does not tint the QR code for an entry with no colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      const call = QRCode.toDataURL.mock.calls.find((c) => c[0] === 'https://example.com/c');
+      expect(call[1]).not.toHaveProperty('color');
+    });
+
+    it('still generates at the full pixel size when tinting', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(QRCode.toDataURL).toHaveBeenCalledWith(
+        'https://example.com/a',
+        expect.objectContaining({ width: 1024 })
+      );
+    });
+  });
 });
