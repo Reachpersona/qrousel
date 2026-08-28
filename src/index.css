@@ -16,9 +16,17 @@
    background decides the lightness of its page, and everything floating above
    that page - dialogs, the footer - has to agree with it rather than with the
    phone. Custom properties inherit, so redeclaring them on the page element
-   re-themes its whole subtree. */
+   re-themes its whole subtree.
+
+   A dialog is the exception, and .modal-backdrop appears in both scheme lists
+   to opt back out. Help and the overwrite warning are about the app, not about
+   the entry, so their appearance should not depend on which code happened to be
+   on screen - and a dialog is never seen against the bare page anyway. The
+   scrim behind it takes cream down to #6d675a, so the contrast that would
+   otherwise argue for matching the page is not real: 2.97:1, not 13:1. */
 :root,
-.theme-light {
+.theme-light,
+.modal-backdrop {
   /* Without this, Chrome on Android applies its own auto-darkening to a page
      that has not said which schemes it handles - which would recolour a
      background the entry owner chose deliberately, and can filter images. It
@@ -57,7 +65,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root,
+  .modal-backdrop {
     --surface: #121212;
     --surface-raised: #1e1e1e;
     --surface-sunken: #262626;

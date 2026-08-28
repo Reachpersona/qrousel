@@ -48,7 +48,7 @@ describe('theme tokens', () => {
     };
 
     const lightBlock = () => {
-      const match = css().match(/:root,\s*\.theme-light\s*\{([\s\S]*?)\n\}/);
+      const match = css().match(/:root,\s*\.theme-light,\s*\.modal-backdrop\s*\{([\s\S]*?)\n\}/);
       return match ? match[1] : '';
     };
 
@@ -69,7 +69,7 @@ describe('theme tokens', () => {
 
     const darkBlock = () => {
       const match = css().match(
-        /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([\s\S]*?)\}/
+        /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root,\s*\.modal-backdrop\s*\{([\s\S]*?)\}/
       );
       return match ? match[1] : '';
     };
@@ -114,6 +114,17 @@ describe('theme tokens', () => {
     it('offers each scheme as a class that can be forced onto a subtree', () => {
       expect(css()).toMatch(/\.theme-light\s*\{/);
       expect(css()).toMatch(/\n\.theme-dark\s*\{/);
+    });
+
+    // A page forces its theme onto everything inside it, which would otherwise
+    // include the dialogs - and then the help would look different depending on
+    // which code was on screen behind it. A dialog is app chrome, and it is
+    // always seen through a scrim, so it follows the phone instead.
+    it('lets a dialog opt back out of the page theme', () => {
+      expect(lightBlock()).not.toBe('');
+      expect(darkBlock()).not.toBe('');
+      expect(css()).toMatch(/:root,\s*\.theme-light,\s*\.modal-backdrop\s*\{/);
+      expect(css()).toMatch(/:root,\s*\.modal-backdrop\s*\{/);
     });
 
     it('keeps the forced dark set identical to the dark scheme set', () => {
