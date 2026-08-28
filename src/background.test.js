@@ -1,5 +1,6 @@
 import {
   normalizeHex,
+  isLightBackground,
   relativeLuminance,
   textColorFor,
   canTintQr,
@@ -88,6 +89,31 @@ describe('textColorFor', () => {
   it('has no opinion about a colour it does not understand', () => {
     expect(textColorFor('navy')).toBeNull();
     expect(textColorFor(null)).toBeNull();
+  });
+});
+
+describe('isLightBackground', () => {
+  it('recognises a light page', () => {
+    expect(isLightBackground('#ffffff')).toBe(true);
+    expect(isLightBackground('#ffe8d6')).toBe(true);
+  });
+
+  it('recognises a dark page', () => {
+    expect(isLightBackground('#000000')).toBe(false);
+    expect(isLightBackground('#1d3557')).toBe(false);
+  });
+
+  // Shares its threshold with textColorFor: the two must never disagree, or a
+  // page would get light-scheme tokens and dark text.
+  it('agrees with the text colour at the boundary', () => {
+    expect(isLightBackground('#757575')).toBe(false);
+    expect(textColorFor('#757575')).toBe('#ffffff');
+    expect(isLightBackground('#767676')).toBe(true);
+    expect(textColorFor('#767676')).toBe('#111111');
+  });
+
+  it('has no answer for a colour it cannot measure', () => {
+    expect(isLightBackground('navy')).toBeNull();
   });
 });
 

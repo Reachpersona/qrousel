@@ -59,14 +59,26 @@ const TEXT_FLIP_LUMINANCE = Math.sqrt(1.05 * 0.05) - 0.05;
 const QR_TINT_MIN_LUMINANCE = 0.5;
 
 /**
+ * Whether a page painted this colour is a light one, or null if the colour is
+ * not one this understands. Drives both the text colour and which set of theme
+ * tokens the page and everything floating above it should use - they have to
+ * agree, so they share this answer rather than each deciding.
+ */
+export function isLightBackground(hex) {
+  const luminance = relativeLuminance(hex);
+  if (luminance === null) return null;
+  return luminance > TEXT_FLIP_LUMINANCE;
+}
+
+/**
  * The text colour to use on a background, or null if the background is not a
  * colour this understands - in which case the caller should style nothing at
  * all rather than guess.
  */
 export function textColorFor(hex) {
-  const luminance = relativeLuminance(hex);
-  if (luminance === null) return null;
-  return luminance > TEXT_FLIP_LUMINANCE ? '#111111' : '#ffffff';
+  const light = isLightBackground(hex);
+  if (light === null) return null;
+  return light ? '#111111' : '#ffffff';
 }
 
 /**

@@ -504,6 +504,51 @@ describe('ContactCarousel', () => {
       expect(call[1]).not.toHaveProperty('color');
     });
 
+    // Dialogs and the footer render inside this element and read their colours
+    // from tokens. Without a forced theme they resolve against the phone, so a
+    // pale card on a dark phone gets dark-scheme text on a light page - the
+    // version footer lands at 2.4:1 that way.
+    it('forces the light theme onto the page for a pale colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveClass('theme-light');
+      expect(root()).not.toHaveClass('theme-dark');
+    });
+
+    it('forces the dark theme onto the page for a dark colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      await clickNext();
+
+      expect(root()).toHaveClass('theme-dark');
+      expect(root()).not.toHaveClass('theme-light');
+    });
+
+    it('forces neither when the entry names no colour, so the phone decides', async () => {
+      await renderWithContacts(WITH_COLOURS);
+      await clickNext();
+
+      await clickNext();
+
+      expect(root()).not.toHaveClass('theme-light');
+      expect(root()).not.toHaveClass('theme-dark');
+    });
+
+    it('forces neither for a colour it cannot understand', async () => {
+      await renderWithContacts([
+        { url: 'https://example.com/a', description: 'Bad colour', background: 'navy' },
+      ]);
+
+      expect(root()).not.toHaveClass('theme-light');
+      expect(root()).not.toHaveClass('theme-dark');
+    });
+
+    it('keeps the carousel class whatever theme is forced', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveClass('ContactCarousel');
+    });
+
     it('still generates at the full pixel size when tinting', async () => {
       await renderWithContacts(WITH_COLOURS);
 

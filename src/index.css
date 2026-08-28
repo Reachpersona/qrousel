@@ -9,8 +9,16 @@
    no longer means warning. What actually transfers between the two schemes is
    the *role*: each token keeps its hue and its meaning, and moves its lightness
    to the other end while giving up some saturation, because a colour that reads
-   well on white is too vivid on black. */
-:root {
+   well on white is too vivid on black.
+
+   Each set exists twice: once as the scheme default on :root, and once as a
+   class that can be forced onto a subtree. An entry that names its own
+   background decides the lightness of its page, and everything floating above
+   that page - dialogs, the footer - has to agree with it rather than with the
+   phone. Custom properties inherit, so redeclaring them on the page element
+   re-themes its whole subtree. */
+:root,
+.theme-light {
   /* Without this, Chrome on Android applies its own auto-darkening to a page
      that has not said which schemes it handles - which would recolour a
      background the entry owner chose deliberately, and can filter images. It
@@ -90,4 +98,43 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Native buttons, inputs and scrollbars are painted by the browser from
+   color-scheme, not from our tokens, so a page that forces a theme has to
+   declare its scheme as well - otherwise its controls keep following the phone
+   and disagree with everything around them. */
+.theme-light {
+  color-scheme: light;
+}
+
+/* Forced onto a page whose entry chose a dark background, so the dialogs and
+   the footer above it match it rather than the phone. Kept identical to the
+   scheme block above by theme.test.js. */
+.theme-dark {
+  color-scheme: dark;
+
+  --surface: #121212;
+  --surface-raised: #1e1e1e;
+  --surface-sunken: #262626;
+  --surface-selected: #16304a;
+
+  /* Not #fff, for the same reason --text is not #000 in light. */
+  --text: #f0f0f0;
+  --text-muted: #a0a0a0;
+  --text-on-sunken: #d4d4d4;
+
+  --border: #3a3a3a;
+  --border-strong: #6a6a6a;
+
+  /* Lightened rather than inverted: the hue survives, the saturation drops,
+     because a colour tuned for white glares against near-black. */
+  --accent: #7ab7ff;
+  --danger: #ff8a80;
+  --ok: #7ddc8a;
+  --caution: #e8b339;
+
+  /* A darker page needs a heavier scrim to separate a dialog from it. */
+  --scrim: rgba(0, 0, 0, 0.7);
+  --shadow: rgba(0, 0, 0, 0.6);
 }

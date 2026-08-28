@@ -48,8 +48,23 @@ describe('theme tokens', () => {
     };
 
     const lightBlock = () => {
-      const match = css().match(/:root\s*\{([\s\S]*?)\}/);
+      const match = css().match(/:root,\s*\.theme-light\s*\{([\s\S]*?)\n\}/);
       return match ? match[1] : '';
+    };
+
+    const forcedDarkBlock = () => {
+      const match = css().match(/\n\.theme-dark\s*\{([\s\S]*?)\n\}/);
+      return match ? match[1] : '';
+    };
+
+    // Values, not just names: the risk with a duplicated set is that one side
+    // gets tuned and the other does not.
+    const valuesIn = (block) => {
+      const pairs = block.match(/--[a-z-]+\s*:\s*[^;]+;/g) || [];
+      return pairs
+        .map((pair) => pair.replace(/\s+/g, ' ').trim())
+        .sort()
+        .join('\n');
     };
 
     const darkBlock = () => {
@@ -91,6 +106,26 @@ describe('theme tokens', () => {
 
     it('still declares color-scheme, which is what opts out of auto-darkening', () => {
       expect(css()).toMatch(/color-scheme:\s*light dark/);
+    });
+
+    // An entry that names its own background decides the lightness of its page,
+    // so the dialogs and footer above it follow the page rather than the phone.
+    // That needs the same two sets available as forcible classes.
+    it('offers each scheme as a class that can be forced onto a subtree', () => {
+      expect(css()).toMatch(/\.theme-light\s*\{/);
+      expect(css()).toMatch(/\n\.theme-dark\s*\{/);
+    });
+
+    it('keeps the forced dark set identical to the dark scheme set', () => {
+      expect(valuesIn(forcedDarkBlock())).toBe(valuesIn(darkBlock()));
+      expect(valuesIn(forcedDarkBlock())).not.toBe('');
+    });
+
+    // A forced page also has to say which scheme it is, or the browser keeps
+    // painting its buttons and scrollbars for the phone's setting.
+    it('declares a scheme on each forced class', () => {
+      expect(forcedDarkBlock()).toMatch(/color-scheme:\s*dark/);
+      expect(css()).toMatch(/\.theme-light\s*\{\s*color-scheme:\s*light/);
     });
   });
 });

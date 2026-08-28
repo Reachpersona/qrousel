@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { marked } from 'marked';
 import QrContentsDialog from './QrContentsDialog';
-import { normalizeHex, textColorFor, canTintQr } from './background';
+import { normalizeHex, textColorFor, canTintQr, isLightBackground } from './background';
 import HelpDialog from './HelpDialog';
 import VersionFooter from './VersionFooter';
 import './ContactCarousel.css';
@@ -193,8 +193,17 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
     ? { backgroundColor: background, color: textColorFor(background) }
     : undefined;
 
+  // The dialogs and the footer render inside this element and take their
+  // colours from tokens. Left alone those tokens resolve against the phone, so
+  // a pale entry on a dark phone would put dark-scheme text on a light page -
+  // the version footer ends up at 2.4:1 that way. Forcing the matching theme
+  // here re-declares the tokens for the whole subtree, since custom properties
+  // inherit. An entry with no colour forces nothing and the phone decides, as
+  // it should.
+  const themeClass = background ? (isLightBackground(background) ? ' theme-light' : ' theme-dark') : '';
+
   return (
-    <div className="ContactCarousel" ref={carouselRef} style={pageStyle}>
+    <div className={`ContactCarousel${themeClass}`} ref={carouselRef} style={pageStyle}>
       <div className="carousel-main">
         <div className="carousel-item">
           <div className="carousel-content">
