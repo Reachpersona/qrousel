@@ -558,4 +558,100 @@ describe('ContactCarousel', () => {
       );
     });
   });
+  // Paper has no colour scheme and no dark mode. Whatever the screen is doing -
+  // a chosen background, the phone's theme - what comes out of a printer has to
+  // be a scannable code and readable words.
+  describe('printing', () => {
+    const TINTED = [
+      { url: 'https://example.com/pale', description: 'Pale one', background: '#f2e6c8' },
+      { url: 'https://example.com/plain', description: 'Plain one' },
+      { url: 'https://example.com/dark', description: 'Dark one', background: '#1d3557' },
+    ];
+
+    const callsFor = (url) => QRCode.toDataURL.mock.calls.filter((call) => call[0] === url);
+
+    // The shared mock answers every call with the same string, which would make
+    // "the print copy is the plain one" pass even if the two were swapped.
+    beforeEach(() => {
+      QRCode.toDataURL.mockImplementation((url, options) =>
+        Promise.resolve(options && options.color ? 'data:image/png;tinted' : 'data:image/png;plain')
+      );
+    });
+
+    it('offers a print button', async () => {
+      await renderWithContacts(TINTED);
+
+      expect(screen.getByRole('button', { name: /^Print$/i })).toBeInTheDocument();
+    });
+
+    it('asks the browser to print', async () => {
+      const print = jest.fn();
+      window.print = print;
+      await renderWithContacts(TINTED);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /^Print$/i }));
+      });
+
+      expect(print).toHaveBeenCalledTimes(1);
+    });
+
+    // The tint is baked into the PNG, so no stylesheet can take it back out.
+    // A second, plain code is the only way paper gets black on white.
+    it('generates a plain code alongside a tinted one', async () => {
+      await renderWithContacts(TINTED);
+
+      const calls = callsFor('https://example.com/pale');
+      expect(calls).toHaveLength(2);
+      expect(calls.some((call) => call[1].color)).toBe(true);
+      expect(calls.some((call) => !call[1].color)).toBe(true);
+    });
+
+    // Generating a second identical code for every untinted entry would be pure
+    // waste, and every entry is untinted by default.
+    it('generates no second code when the first is already plain', async () => {
+      await renderWithContacts(TINTED);
+
+      expect(callsFor('https://example.com/plain')).toHaveLength(1);
+      expect(callsFor('https://example.com/dark')).toHaveLength(1);
+    });
+
+    it('puts the plain code in the document for print to pick up', async () => {
+      await renderWithContacts(TINTED);
+
+      const printImage = document.querySelector('.qr-code-print');
+      expect(printImage).toBeInTheDocument();
+      expect(printImage.getAttribute('src')).toBe('data:image/png;plain');
+      // ...while the one on screen keeps the entry's colour.
+      expect(document.querySelector('.qr-code').getAttribute('src')).toBe(
+        'data:image/png;tinted'
+      );
+    });
+
+    it('uses the one code there is when the entry has no colour', async () => {
+      await renderWithContacts(TINTED);
+
+      await clickNext();
+
+      expect(document.querySelector('.qr-code-print').getAttribute('src')).toBe(
+        'data:image/png;plain'
+      );
+      expect(document.querySelector('.qr-code').getAttribute('src')).toBe('data:image/png;plain');
+    });
+
+    it('keeps the print copy out of the accessibility tree', async () => {
+      await renderWithContacts(TINTED);
+
+      expect(document.querySelector('.qr-code-print')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('follows the entry being viewed', async () => {
+      await renderWithContacts(TINTED);
+
+      await clickNext();
+
+      expect(document.querySelector('.qr-code-print')).toBeInTheDocument();
+      expect(screen.getByText('Plain one')).toBeInTheDocument();
+    });
+  });
 });

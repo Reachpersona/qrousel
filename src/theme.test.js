@@ -22,6 +22,12 @@ const stylesheets = () =>
 // Comments explain colours constantly; only declarations are the subject here.
 const withoutComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
+// Print is the one place a literal belongs. Paper has no colour scheme to
+// follow and no dark mode to respect, and the whole point of the print rules is
+// to force black on white over whatever the screen was doing - so a token,
+// which exists to carry two values, is the wrong tool there.
+const withoutPrintRules = (css) => css.replace(/@media\s+print\s*\{[\s\S]*?\n\}/g, '');
+
 describe('theme tokens', () => {
   it('finds the stylesheets', () => {
     expect(stylesheets().length).toBeGreaterThan(5);
@@ -33,7 +39,9 @@ describe('theme tokens', () => {
       .readdirSync(path.join(__dirname))
       .filter((name) => name.endsWith('.css') && name !== TOKEN_FILE)
   )('%s names no colour of its own', (name) => {
-    const css = withoutComments(fs.readFileSync(path.join(STYLE_DIR, name), 'utf8'));
+    const css = withoutPrintRules(
+      withoutComments(fs.readFileSync(path.join(STYLE_DIR, name), 'utf8'))
+    );
     const found = css.match(COLOUR_LITERAL) || [];
 
     expect(found).toEqual([]);

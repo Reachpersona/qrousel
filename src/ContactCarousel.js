@@ -19,6 +19,8 @@ const CLICK_AFTER_TOUCH_MS = 600;
 const QR_PIXEL_SIZE = 1024;
 function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [qrCodes, setQrCodes] = useState([]);
+  // Always plain black on white, whatever the screen shows.
+  const [printCodes, setPrintCodes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [descriptionHtml, setDescriptionHtml] = useState(null);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
@@ -32,8 +34,9 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   useEffect(() => {
     const generateQRCodes = async () => {
       if (Array.isArray(contacts) && contacts.length > 0) {
+        const printable = [];
         const codes = await Promise.all(
-          contacts.map(async (contact) => {
+          contacts.map(async (contact, index) => {
             try {
               // Rendered at ~80% of the viewport width, so generate well above
               // that: a small raster upscaled on a high-DPI screen blurs the
@@ -47,8 +50,15 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
               const tint = normalizeHex(contact.background);
               if (tint && canTintQr(tint)) {
                 options.color = { light: tint };
+                // The tint is baked into the PNG, so no stylesheet can take it
+                // back out for paper. A plain code is generated alongside it -
+                // but only here, since an untinted entry's code is already the
+                // one to print and generating it twice would be pure waste.
+                printable[index] = await QRCode.toDataURL(contact.url, { width: QR_PIXEL_SIZE });
               }
-              return await QRCode.toDataURL(contact.url, options);
+              const code = await QRCode.toDataURL(contact.url, options);
+              if (!printable[index]) printable[index] = code;
+              return code;
             } catch (error) {
               console.error(`Error generating QR code for ${contact.url}:`, error);
               return '/placeholder.png';
@@ -56,6 +66,7 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           })
         );
         setQrCodes(codes);
+        setPrintCodes(printable);
       }
     };
 
@@ -219,6 +230,15 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
               onTouchEnd={handleQrTouchEnd}
               onTouchCancel={handleQrTouchEnd}
             />
+            {/* Hidden on screen, shown by the print stylesheet in place of the
+                one above, which may carry the entry's colour. */}
+            <img
+              src={printCodes[currentIndex] || qrCodes[currentIndex] || '/placeholder.png'}
+              alt=""
+              aria-hidden="true"
+              className="qr-code-print"
+              draggable={false}
+            />
             <div
               data-testid="description"
               className="description"
@@ -266,6 +286,7 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           )}
         </button>
         <button onClick={onLoadFile}>Switch</button>
+        <button onClick={() => window.print()}>Print</button>
         <button className="help-button" aria-label="Help" onClick={() => setIsHelpOpen(true)}>
           ?
         </button>

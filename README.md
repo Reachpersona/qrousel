@@ -48,6 +48,11 @@ delete, and reorder entries.
   so repeated saves do not silently overwrite one another. Where **Save** is not
   offered, this downloads the new file instead.
 * **Switch** opens a different `qrdata.yaml`.
+* **Print** puts the current code and its description on one portrait page, in
+  black and white. Controls, the version footer and the entry's background
+  colour are all left off. If the entry's colour was pale enough that the code
+  on screen was tinted to match, a plain black-on-white code is printed instead -
+  the tint is part of the image, so no stylesheet could remove it.
 * **?** opens a short help panel.
 
 ### Background colours

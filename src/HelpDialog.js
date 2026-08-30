@@ -68,6 +68,13 @@ function HelpDialog({ onClose }) {
         <dt>Switch</dt>
         <dd>Opens a different file of codes.</dd>
 
+        <dt>Print</dt>
+        <dd>
+          Puts the code you are looking at, and its words, on one portrait page. Always in
+          black and white: the buttons, the page colour and the app&rsquo;s own dark theme are
+          all left off, so the code stays sharp and uses no more ink than it needs.
+        </dd>
+
         <dt>Edit</dt>
         <dd>
           The pencil button, which shows the name of the file you are working on. Add, change,

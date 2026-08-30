@@ -134,6 +134,14 @@ describe('HelpDialog', () => {
     expect(document.querySelector('.help')).toHaveTextContent(/background colour/i);
   });
 
+  it('explains what printing puts on the page', () => {
+    render(<HelpDialog onClose={() => {}} />);
+
+    const help = document.querySelector('.help');
+    expect(help).toHaveTextContent(/print/i);
+    expect(help).toHaveTextContent(/black and white/i);
+  });
+
   it('shows which deployment is being viewed', () => {
     render(<HelpDialog onClose={() => {}} />);
 

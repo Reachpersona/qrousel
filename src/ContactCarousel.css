@@ -92,6 +92,11 @@
   }
 }
 
+/* Only exists for paper. On screen the tinted copy above is the visible one. */
+.qr-code-print {
+  display: none;
+}
+
 .qr-code {
   cursor: pointer;
   /* Let the carousel own horizontal swipes; a long press still reaches us. */
@@ -173,4 +178,71 @@
   justify-content: center;
   line-height: 1;
   padding: 0;
+}
+
+/* Paper has no colour scheme, no dark mode, and no viewport height. Everything
+   below undoes the screen layout rather than adjusting it: the root is sized to
+   the visible viewport and hides its overflow, which on paper would clip the
+   page to one screenful and throw the rest away.
+
+   Colours are literal here on purpose. A token carries two values so it can
+   follow a scheme, and the point of these rules is that nothing follows
+   anything: whatever the screen was doing - an entry's chosen background, the
+   phone's dark theme, white text on a dark page - what comes out of the printer
+   is black on white. Browsers already omit backgrounds by default, but the text
+   colour is set inline from the entry's colour and would otherwise print white
+   on white. */
+@media print {
+  @page {
+    size: portrait;
+    margin: 15mm;
+  }
+
+  .ContactCarousel,
+  .carousel-main,
+  .carousel-item,
+  .carousel-content {
+    display: block;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Inline styles and tokens both lose to this. */
+  .ContactCarousel * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Nothing here can be pressed on paper, and a dialog would cover the code. */
+  .controls,
+  .file-actions,
+  .version-footer,
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  /* The screen copy may carry the entry's colour; this one never does. */
+  .qr-code {
+    display: none !important;
+  }
+
+  .qr-code-print {
+    display: block;
+    width: 70mm;
+    height: 70mm;
+    margin: 0 auto 8mm;
+  }
+
+  /* On screen this scrolls inside the space left over. On paper there is no
+     leftover space to scroll inside - it simply runs on. */
+  .description {
+    overflow: visible !important;
+    max-height: none;
+    font-size: 12pt;
+  }
 }
