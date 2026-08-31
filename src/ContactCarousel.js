@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { marked } from 'marked';
 import QrContentsDialog from './QrContentsDialog';
+import { normalizeHex, textColorFor, canTintQr, isLightBackground } from './background';
 import HelpDialog from './HelpDialog';
 import VersionFooter from './VersionFooter';
 import './ContactCarousel.css';
@@ -18,6 +19,8 @@ const CLICK_AFTER_TOUCH_MS = 600;
 const QR_PIXEL_SIZE = 1024;
 function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   const [qrCodes, setQrCodes] = useState([]);
+  // Always plain black on white, whatever the screen shows.
+  const [printCodes, setPrintCodes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [descriptionHtml, setDescriptionHtml] = useState(null);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
@@ -31,13 +34,31 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
   useEffect(() => {
     const generateQRCodes = async () => {
       if (Array.isArray(contacts) && contacts.length > 0) {
+        const printable = [];
         const codes = await Promise.all(
-          contacts.map(async (contact) => {
+          contacts.map(async (contact, index) => {
             try {
               // Rendered at ~80% of the viewport width, so generate well above
               // that: a small raster upscaled on a high-DPI screen blurs the
               // module edges a scanner needs. ~10 KiB per code as a data URL.
-              return await QRCode.toDataURL(contact.url, { width: QR_PIXEL_SIZE });
+              const options = { width: QR_PIXEL_SIZE };
+              // A pale page can take the quiet zone and light modules, so the
+              // code stops being a white square sitting on a colour. Only when
+              // the contrast against the black modules survives it - a code a
+              // camera cannot read still looks perfectly fine on screen, which
+              // is what makes getting this wrong expensive.
+              const tint = normalizeHex(contact.background);
+              if (tint && canTintQr(tint)) {
+                options.color = { light: tint };
+                // The tint is baked into the PNG, so no stylesheet can take it
+                // back out for paper. A plain code is generated alongside it -
+                // but only here, since an untinted entry's code is already the
+                // one to print and generating it twice would be pure waste.
+                printable[index] = await QRCode.toDataURL(contact.url, { width: QR_PIXEL_SIZE });
+              }
+              const code = await QRCode.toDataURL(contact.url, options);
+              if (!printable[index]) printable[index] = code;
+              return code;
             } catch (error) {
               console.error(`Error generating QR code for ${contact.url}:`, error);
               return '/placeholder.png';
@@ -45,6 +66,7 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           })
         );
         setQrCodes(codes);
+        setPrintCodes(printable);
       }
     };
 
@@ -174,8 +196,25 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
     }
   };
 
+  // Null unless the current entry names a colour this understands, so an entry
+  // with no colour and an entry with a broken one both fall through to the
+  // stylesheet rather than to a half-applied inline style.
+  const background = normalizeHex(contacts[currentIndex]?.background);
+  const pageStyle = background
+    ? { backgroundColor: background, color: textColorFor(background) }
+    : undefined;
+
+  // The dialogs and the footer render inside this element and take their
+  // colours from tokens. Left alone those tokens resolve against the phone, so
+  // a pale entry on a dark phone would put dark-scheme text on a light page -
+  // the version footer ends up at 2.4:1 that way. Forcing the matching theme
+  // here re-declares the tokens for the whole subtree, since custom properties
+  // inherit. An entry with no colour forces nothing and the phone decides, as
+  // it should.
+  const themeClass = background ? (isLightBackground(background) ? ' theme-light' : ' theme-dark') : '';
+
   return (
-    <div className="ContactCarousel" ref={carouselRef}>
+    <div className={`ContactCarousel${themeClass}`} ref={carouselRef} style={pageStyle}>
       <div className="carousel-main">
         <div className="carousel-item">
           <div className="carousel-content">
@@ -190,6 +229,15 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
               onTouchMove={handleQrTouchMove}
               onTouchEnd={handleQrTouchEnd}
               onTouchCancel={handleQrTouchEnd}
+            />
+            {/* Hidden on screen, shown by the print stylesheet in place of the
+                one above, which may carry the entry's colour. */}
+            <img
+              src={printCodes[currentIndex] || qrCodes[currentIndex] || '/placeholder.png'}
+              alt=""
+              aria-hidden="true"
+              className="qr-code-print"
+              draggable={false}
             />
             <div
               data-testid="description"
@@ -238,6 +286,7 @@ function ContactCarousel({ contacts, fileName, onLoadFile, onEdit }) {
           )}
         </button>
         <button onClick={onLoadFile}>Switch</button>
+        <button onClick={() => window.print()}>Print</button>
         <button className="help-button" aria-label="Help" onClick={() => setIsHelpOpen(true)}>
           ?
         </button>

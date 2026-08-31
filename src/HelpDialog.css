@@ -18,12 +18,12 @@
 
 .help dd {
   margin: 2px 0 0;
-  color: #333;
+  color: var(--text-on-sunken);
 }
 
 .help-note {
   font-size: 13px;
-  color: #666;
+  color: var(--text-muted);
   margin: 12px 0 0;
 }
 
@@ -38,19 +38,19 @@
 .help-mark {
   font-size: 11px;
   font-weight: 700;
-  color: #0b5cab;
+  color: var(--accent);
   padding-left: 1px;
 }
 
 .help-legend {
   margin: 16px 0 0;
   padding-top: 10px;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid var(--border);
 }
 
 .help-legend-item {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
   margin: 0 0 6px;
 }
 
@@ -62,8 +62,8 @@
    worth reading - it explains why the app looks different elsewhere - so it is
    dimmed rather than hidden. */
 .help-legend-applies {
-  color: #111;
-  background: #eef4fb;
+  color: var(--text);
+  background: var(--surface-selected);
   border-radius: 4px;
   padding: 6px 8px;
   margin-left: -8px;

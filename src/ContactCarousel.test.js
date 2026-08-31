@@ -419,4 +419,239 @@ describe('ContactCarousel', () => {
       expect(main).not.toContainElement(actions);
     });
   });
+  // A per-entry page colour. The value comes from a user-supplied file and ends
+  // up in a style attribute, so an unrecognised one must style nothing at all
+  // rather than something broken.
+  describe('entry background colour', () => {
+    const root = () => document.querySelector('.ContactCarousel');
+
+    const WITH_COLOURS = [
+      { url: 'https://example.com/a', description: 'Pale one', background: '#ffe8d6' },
+      { url: 'https://example.com/b', description: 'Dark one', background: '#1d3557' },
+      { url: 'https://example.com/c', description: 'Plain one' },
+    ];
+
+    it('paints the page with the current entry colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveStyle({ backgroundColor: '#ffe8d6' });
+    });
+
+    it('repaints when moving to the next entry', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      await clickNext();
+
+      expect(root()).toHaveStyle({ backgroundColor: '#1d3557' });
+    });
+
+    it('leaves the page alone for an entry with no colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+      await clickNext();
+
+      await clickNext();
+
+      expect(root().style.backgroundColor).toBe('');
+      expect(root().style.color).toBe('');
+    });
+
+    it('styles nothing at all when the colour is not one it understands', async () => {
+      await renderWithContacts([
+        { url: 'https://example.com/a', description: 'Bad colour', background: 'navy' },
+      ]);
+
+      expect(root().style.backgroundColor).toBe('');
+      expect(root().style.color).toBe('');
+    });
+
+    it('puts dark text on a pale page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveStyle({ color: '#111111' });
+    });
+
+    it('puts light text on a dark page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      await clickNext();
+
+      expect(root()).toHaveStyle({ color: '#ffffff' });
+    });
+
+    // Tinting the quiet zone makes the code blend into a pale page. On a dark
+    // page it would leave black modules on near-black, so the code keeps its
+    // white plate instead.
+    it('tints the QR code to match a pale page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(QRCode.toDataURL).toHaveBeenCalledWith(
+        'https://example.com/a',
+        expect.objectContaining({ color: { light: '#ffe8d6' } })
+      );
+    });
+
+    it('does not tint the QR code on a dark page', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      const call = QRCode.toDataURL.mock.calls.find((c) => c[0] === 'https://example.com/b');
+      expect(call[1]).not.toHaveProperty('color');
+    });
+
+    it('does not tint the QR code for an entry with no colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      const call = QRCode.toDataURL.mock.calls.find((c) => c[0] === 'https://example.com/c');
+      expect(call[1]).not.toHaveProperty('color');
+    });
+
+    // Dialogs and the footer render inside this element and read their colours
+    // from tokens. Without a forced theme they resolve against the phone, so a
+    // pale card on a dark phone gets dark-scheme text on a light page - the
+    // version footer lands at 2.4:1 that way.
+    it('forces the light theme onto the page for a pale colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveClass('theme-light');
+      expect(root()).not.toHaveClass('theme-dark');
+    });
+
+    it('forces the dark theme onto the page for a dark colour', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      await clickNext();
+
+      expect(root()).toHaveClass('theme-dark');
+      expect(root()).not.toHaveClass('theme-light');
+    });
+
+    it('forces neither when the entry names no colour, so the phone decides', async () => {
+      await renderWithContacts(WITH_COLOURS);
+      await clickNext();
+
+      await clickNext();
+
+      expect(root()).not.toHaveClass('theme-light');
+      expect(root()).not.toHaveClass('theme-dark');
+    });
+
+    it('forces neither for a colour it cannot understand', async () => {
+      await renderWithContacts([
+        { url: 'https://example.com/a', description: 'Bad colour', background: 'navy' },
+      ]);
+
+      expect(root()).not.toHaveClass('theme-light');
+      expect(root()).not.toHaveClass('theme-dark');
+    });
+
+    it('keeps the carousel class whatever theme is forced', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(root()).toHaveClass('ContactCarousel');
+    });
+
+    it('still generates at the full pixel size when tinting', async () => {
+      await renderWithContacts(WITH_COLOURS);
+
+      expect(QRCode.toDataURL).toHaveBeenCalledWith(
+        'https://example.com/a',
+        expect.objectContaining({ width: 1024 })
+      );
+    });
+  });
+  // Paper has no colour scheme and no dark mode. Whatever the screen is doing -
+  // a chosen background, the phone's theme - what comes out of a printer has to
+  // be a scannable code and readable words.
+  describe('printing', () => {
+    const TINTED = [
+      { url: 'https://example.com/pale', description: 'Pale one', background: '#f2e6c8' },
+      { url: 'https://example.com/plain', description: 'Plain one' },
+      { url: 'https://example.com/dark', description: 'Dark one', background: '#1d3557' },
+    ];
+
+    const callsFor = (url) => QRCode.toDataURL.mock.calls.filter((call) => call[0] === url);
+
+    // The shared mock answers every call with the same string, which would make
+    // "the print copy is the plain one" pass even if the two were swapped.
+    beforeEach(() => {
+      QRCode.toDataURL.mockImplementation((url, options) =>
+        Promise.resolve(options && options.color ? 'data:image/png;tinted' : 'data:image/png;plain')
+      );
+    });
+
+    it('offers a print button', async () => {
+      await renderWithContacts(TINTED);
+
+      expect(screen.getByRole('button', { name: /^Print$/i })).toBeInTheDocument();
+    });
+
+    it('asks the browser to print', async () => {
+      const print = jest.fn();
+      window.print = print;
+      await renderWithContacts(TINTED);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /^Print$/i }));
+      });
+
+      expect(print).toHaveBeenCalledTimes(1);
+    });
+
+    // The tint is baked into the PNG, so no stylesheet can take it back out.
+    // A second, plain code is the only way paper gets black on white.
+    it('generates a plain code alongside a tinted one', async () => {
+      await renderWithContacts(TINTED);
+
+      const calls = callsFor('https://example.com/pale');
+      expect(calls).toHaveLength(2);
+      expect(calls.some((call) => call[1].color)).toBe(true);
+      expect(calls.some((call) => !call[1].color)).toBe(true);
+    });
+
+    // Generating a second identical code for every untinted entry would be pure
+    // waste, and every entry is untinted by default.
+    it('generates no second code when the first is already plain', async () => {
+      await renderWithContacts(TINTED);
+
+      expect(callsFor('https://example.com/plain')).toHaveLength(1);
+      expect(callsFor('https://example.com/dark')).toHaveLength(1);
+    });
+
+    it('puts the plain code in the document for print to pick up', async () => {
+      await renderWithContacts(TINTED);
+
+      const printImage = document.querySelector('.qr-code-print');
+      expect(printImage).toBeInTheDocument();
+      expect(printImage.getAttribute('src')).toBe('data:image/png;plain');
+      // ...while the one on screen keeps the entry's colour.
+      expect(document.querySelector('.qr-code').getAttribute('src')).toBe(
+        'data:image/png;tinted'
+      );
+    });
+
+    it('uses the one code there is when the entry has no colour', async () => {
+      await renderWithContacts(TINTED);
+
+      await clickNext();
+
+      expect(document.querySelector('.qr-code-print').getAttribute('src')).toBe(
+        'data:image/png;plain'
+      );
+      expect(document.querySelector('.qr-code').getAttribute('src')).toBe('data:image/png;plain');
+    });
+
+    it('keeps the print copy out of the accessibility tree', async () => {
+      await renderWithContacts(TINTED);
+
+      expect(document.querySelector('.qr-code-print')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('follows the entry being viewed', async () => {
+      await renderWithContacts(TINTED);
+
+      await clickNext();
+
+      expect(document.querySelector('.qr-code-print')).toBeInTheDocument();
+      expect(screen.getByText('Plain one')).toBeInTheDocument();
+    });
+  });
 });

@@ -57,7 +57,9 @@ function HelpDialog({ onClose }) {
         <dt>See what a code says</dt>
         <dd>
           Click a code to read the text hidden inside it. On a phone, press and hold it
-          instead. If the code holds a web address, you also get a button to open it.
+          instead. If the code holds something your phone can act on - a web address, a phone
+          number, an email, or a text message - you also get a button to do it. Anything else
+          is shown as text you can copy.
         </dd>
 
         <dt>Move between codes</dt>
@@ -66,11 +68,20 @@ function HelpDialog({ onClose }) {
         <dt>Switch</dt>
         <dd>Opens a different file of codes.</dd>
 
+        <dt>Print</dt>
+        <dd>
+          Puts the code you are looking at, and its words, on one portrait page. Always in
+          black and white: the buttons, the page colour and the app&rsquo;s own dark theme are
+          all left off, so the code stays sharp and uses no more ink than it needs.
+        </dd>
+
         <dt>Edit</dt>
         <dd>
           The pencil button, which shows the name of the file you are working on. Add, change,
           delete, and reorder your codes. A code can hold anything - a web address, a phone
-          number, wifi details, or a plain note.
+          number, wifi details, or a plain note. The <strong>?</strong> beside each contents
+          box shows what to type for each of those. Each entry can also be given its own
+          background colour, which the whole screen takes when that code is showing.
         </dd>
 
         <dt>

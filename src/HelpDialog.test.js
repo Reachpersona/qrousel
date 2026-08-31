@@ -128,6 +128,20 @@ describe('HelpDialog', () => {
     });
   });
 
+  it('mentions that an entry can have its own background colour', () => {
+    render(<HelpDialog onClose={() => {}} />);
+
+    expect(document.querySelector('.help')).toHaveTextContent(/background colour/i);
+  });
+
+  it('explains what printing puts on the page', () => {
+    render(<HelpDialog onClose={() => {}} />);
+
+    const help = document.querySelector('.help');
+    expect(help).toHaveTextContent(/print/i);
+    expect(help).toHaveTextContent(/black and white/i);
+  });
+
   it('shows which deployment is being viewed', () => {
     render(<HelpDialog onClose={() => {}} />);
 
