@@ -50,10 +50,16 @@ delete, and reorder entries.
 * **Switch** opens a different `qrdata.yaml`.
 * **Print** puts the current code and its description on one portrait page, in
   black and white. The code takes 80% of the page width - the same share it gets
-  of a phone screen - which is about 144mm on A4. Controls, the version footer and the entry's background
-  colour are all left off. If the entry's colour was pale enough that the code
-  on screen was tinted to match, a plain black-on-white code is printed instead -
-  the tint is part of the image, so no stylesheet could remove it.
+  of a phone screen - which is about 144mm on A4. Controls, the version footer
+  and the entry's background colour are all left off. If the entry's colour was
+  pale enough that the code on screen was tinted to match, a plain
+  black-on-white code is printed instead - the tint is part of the image, so no
+  stylesheet could remove it.
+
+  The page margin is 15mm, but **the browser's print dialog wins**. If the
+  printed page has no margin at all, check that dialog's *Margins* setting is
+  not on *None* - that silently overrides the `@page` rule and nothing in the
+  app can put the margin back.
 * **?** opens a short help panel.
 
 ### Background colours
