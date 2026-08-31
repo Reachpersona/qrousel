@@ -73,6 +73,30 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  /* A description is user markdown and may hold a URL or a code span with no
+     space to break at. `anywhere` rather than `break-word` deliberately: only
+     `anywhere` also shrinks the element's min-content width, which is what
+     stops an unbreakable token pushing the whole column wider than the space it
+     has. Without it the overflow shows as a sideways scrollbar on screen, and
+     on paper as text running past the page margin. */
+  overflow-wrap: anywhere;
+}
+
+/* The other things markdown can produce that have no reason to fit. */
+.description img,
+.description pre,
+.description table {
+  max-width: 100%;
+}
+
+.description img {
+  height: auto;
+}
+
+/* A code block preserves its newlines but must still be allowed to wrap; on
+   paper there is nowhere for it to scroll to. */
+.description pre {
+  white-space: pre-wrap;
 }
 
 .controls {
