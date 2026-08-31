@@ -248,8 +248,17 @@
   }
 
   /* On screen this scrolls inside the space left over. On paper there is no
-     leftover space to scroll inside - it simply runs on. */
+     leftover space to scroll inside - it simply runs on.
+  
+     The width and centring have to be undone together. On screen it is 80% wide
+     and centred by a flex parent; print turns those parents into blocks, and a
+     block does not centre itself - so an 80% box ends up hugging the left edge
+     while the code above it stays centred by its own auto margins, which looks
+     exactly like a missing margin. The page box already provides the margins,
+     so here it just fills them. */
   .description {
+    width: auto;
+    margin: 0;
     overflow: visible !important;
     max-height: none;
     font-size: 12pt;
