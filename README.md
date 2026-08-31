@@ -49,7 +49,8 @@ delete, and reorder entries.
   offered, this downloads the new file instead.
 * **Switch** opens a different `qrdata.yaml`.
 * **Print** puts the current code and its description on one portrait page, in
-  black and white. Controls, the version footer and the entry's background
+  black and white. The code takes 80% of the page width - the same share it gets
+  of a phone screen - which is about 144mm on A4. Controls, the version footer and the entry's background
   colour are all left off. If the entry's colour was pale enough that the code
   on screen was tinted to match, a plain black-on-white code is printed instead -
   the tint is part of the image, so no stylesheet could remove it.

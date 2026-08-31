@@ -231,11 +231,20 @@
     display: none !important;
   }
 
+  /* The same share of the page the code gets of a phone screen. A fixed 70mm
+     was 39% of A4's printable width - half what the viewer shows - which is
+     what made a printed code look mean next to the same code on a phone. The
+     cap stops it becoming absurd on larger paper. */
   .qr-code-print {
     display: block;
-    width: 70mm;
-    height: 70mm;
-    margin: 0 auto 8mm;
+    width: 80%;
+    max-width: 150mm;
+    height: auto;
+    margin: 0 auto 10mm;
+    /* The screen copy has this; the printed one needs it more. Upscaling 1024px
+       to 144mm must keep the module edges hard - smoothing softens exactly the
+       boundaries a scanner reads. */
+    image-rendering: pixelated;
   }
 
   /* On screen this scrolls inside the space left over. On paper there is no
